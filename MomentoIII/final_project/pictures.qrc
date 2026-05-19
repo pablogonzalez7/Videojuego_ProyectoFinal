@@ -1,0 +1,6 @@
+<RCC>
+    <qresource prefix="/">
+        <file>images/sprites/bateo_vegito.png</file>
+        <file>images/backgrounds/background_main.jpg</file>
+    </qresource>
+</RCC>
