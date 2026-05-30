@@ -13,6 +13,9 @@
 #include <QString>
 #include <QTimer>
 #include <QResizeEvent>
+#include <QKeyEvent>
+#include <QGraphicsRectItem>
+#include <QList>
 
 #include "sprite.h"
 
@@ -39,13 +42,24 @@ protected:
 
 private slots:
     void on_botonInicio_clicked();
+    void moveFig();
+
+protected:
+    void keyPressEvent(QKeyEvent *e);
 
 private:
     Ui::MainWindow *ui;
     QGraphicsScene *scene;
+
     QGraphicsPixmapItem *fondo;
+    QGraphicsTextItem *text;
+    QGraphicsLineItem *l1;
+    QGraphicsEllipseItem *e1;
     QTimer *timer, *cronometro;
     QString rutaFondoActual;
+    QGraphicsItem *figEn, *fig;
+
+    QList <QGraphicsRectItem*> obst; //Lista de apuntadores a items rectangulares
 
     void mostrarMenuInicio();
     void ponerFondo(QString);
