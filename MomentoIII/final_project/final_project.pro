@@ -9,10 +9,14 @@ CONFIG += c++17
 SOURCES += \
     main.cpp \
     mainwindow.cpp \
+    personaje.cpp \
+    proyectil.cpp \
     sprite.cpp
 
 HEADERS += \
     mainwindow.h \
+    personaje.h \
+    proyectil.h \
     sprite.h
 
 FORMS += \

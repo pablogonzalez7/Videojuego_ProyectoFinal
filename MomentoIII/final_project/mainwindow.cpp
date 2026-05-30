@@ -1,19 +1,22 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
+#include "personaje.h"
+#include "proyectil.h"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
     , scene(nullptr)
     , fondo(nullptr)
+    , vegito(nullptr)
 {
     ui->setupUi(this);
 
     connect(ui->botonInicio, &QPushButton::clicked, this, &MainWindow::on_botonInicio_clicked);
 
     // timer para manejo de eventos
-    timer = new QTimer;
-    connect(timer, SIGNAL(timeout()), this, SLOT(actualizacion()));
+   // timer = new QTimer;
+   // connect(timer, SIGNAL(timeout()), this, SLOT(actualizacion()));
 
     QRect Desktop = QGuiApplication::primaryScreen()->geometry();
     x = Desktop.x();
@@ -91,17 +94,8 @@ MainWindow::~MainWindow()
     }
     }
 }*/
-sprite *MainWindow::mostrarSprite(const QString &rutaImagen, int cantidadFrames, qreal posX, qreal posY)
-{
-    sprite *nuevoSprite = new sprite(rutaImagen, cantidadFrames);
 
-    scene->addItem(nuevoSprite);
-    nuevoSprite->setPos(posX, posY);
-
-    return nuevoSprite;
-}
-
-void MainWindow::ponerFondo(QString ruta){
+void MainWindow::ponerFondo(QString ruta, float opacity){
     QPixmap imagenFondo(ruta);
     rutaFondoActual = ruta;
 
@@ -118,7 +112,7 @@ void MainWindow::ponerFondo(QString ruta){
     fondo->setPos(0,0);
     fondo->setZValue(-10);
 
-    fondo->setOpacity(0.8);
+    fondo->setOpacity(opacity);
 }
 
 void MainWindow::mostrarMenuInicio(){
@@ -130,16 +124,32 @@ void MainWindow::mostrarMenuInicio(){
 
 void MainWindow::on_botonInicio_clicked()
 {
+    ui->labelTitulo->hide();
+    ui->botonInicio->hide();
+
+    ponerFondo(":/images/backgrounds/nivel1.png", 1.0);
+
+    vegito = new Personaje(":/images/sprites/vegitoBateo.png", 5, 650, 540);
+    vegito->agregarAEscena(scene);
+
+    freezer = new Personaje(":/images/sprites/freezerPitcher.png",6,650,270);
+    freezer->agregarAEscena(scene);
+
+   // e1 = scene->addEllipse(650,270,20,20);
+
+    timerFr = new QTimer(this);
+    timerFr->start(1000);
+    connect(timerFr, SIGNAL(timeout()),this,SLOT(moveFig())); //Señal de movimiento autonomo
 
 }
 
 void MainWindow::moveFig()
 {
-    if(figEn->pos().x()+3 < ui->graphicsView->width())
-    figEn->setPos(figEn->pos().x()+3, figEn->pos().y());
+    freezer->getSprite()->iniciarAnimacion();
+    //e1->setPos(e1->pos().x(),e1->pos().y()+);
+    bolaFreezer = new Proyectil(scene,":/images/sprites/bolaFreezer.png");
 
-    else
-        figEn->setPos(640,435);
+    bolaFreezer->iniciarTimerProyectil();
 }
 
 void MainWindow::keyPressEvent(QKeyEvent *e)
@@ -149,6 +159,9 @@ void MainWindow::keyPressEvent(QKeyEvent *e)
     }
     if(e->key()==Qt::Key_S){
         fig->setPos(fig->pos().x()+10,fig->pos().y()+1);
+    }
+    if(e->key()==Qt::Key_P && vegito != nullptr){
+        vegito->getSprite()->iniciarAnimacion();
     }
 }
 

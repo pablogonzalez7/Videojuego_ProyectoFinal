@@ -9,11 +9,12 @@
 #include "QPixmap"
 #include "QPainter"
 
-class sprite : public QObject, public QGraphicsItem
+class Sprite : public QObject, public QGraphicsItem
 {
     Q_OBJECT
 public:
-    explicit sprite(const QString &rutaImagen, int cantidadFrames, QObject *parent = nullptr);
+    explicit Sprite(const QString &rutaImagen, int cantidadFrames, QObject *parent = nullptr);
+    void iniciarAnimacion();
 
     QTimer *timer;
     QPixmap *pixmap;

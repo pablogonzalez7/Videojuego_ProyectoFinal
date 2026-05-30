@@ -1,5 +1,5 @@
 #include "sprite.h"
-sprite::sprite(const QString &rutaImagen, int cantidadFrames, QObject *parent) : QObject{parent}
+Sprite::Sprite(const QString &rutaImagen, int cantidadFrames, QObject *parent) : QObject{parent}
 {
     timer = new QTimer(this);
 
@@ -15,23 +15,34 @@ sprite::sprite(const QString &rutaImagen, int cantidadFrames, QObject *parent) :
     ancho = pixmap->width() / totalFrames;
     alto = pixmap->height();
 
-    timer->start(250);
-
-    connect(timer, &QTimer::timeout, this, &sprite::actualizacion);
+    connect(timer, &QTimer::timeout, this, &Sprite::actualizacion);
 }
 
-void sprite::actualizacion()
+void Sprite::iniciarAnimacion()
 {
-    frameActual = (frameActual + 1) % totalFrames;
+    frameActual = 0;
+    update();
+    timer->start(100);
+}
+
+void Sprite::actualizacion()
+{
+    frameActual++;
+
+    if(frameActual >= totalFrames){
+        frameActual = 0;
+        timer->stop();
+    }
+
     this->update(-ancho/2, -alto/2, ancho, alto);
 }
 
-QRectF sprite::boundingRect() const
+QRectF Sprite::boundingRect() const
 {
     return QRectF(-ancho/2, -alto/2, ancho, alto);
 }
 
-void sprite::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
+void Sprite::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
 {
     Q_UNUSED(option);
     Q_UNUSED(widget);

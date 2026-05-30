@@ -17,7 +17,8 @@
 #include <QGraphicsRectItem>
 #include <QList>
 
-#include "sprite.h"
+#include "personaje.h"
+#include "proyectil.h"
 
 
 QT_BEGIN_NAMESPACE
@@ -34,7 +35,6 @@ public:
     explicit MainWindow(QWidget *parent = nullptr);
     ~MainWindow() override;
 
-    sprite *mostrarSprite(const QString &rutaImagen, int cantidadFrames, qreal posX, qreal posY);
     void setEscena(short numEscena);
 
 protected:
@@ -42,6 +42,8 @@ protected:
 
 private slots:
     void on_botonInicio_clicked();
+
+public slots:
     void moveFig();
 
 protected:
@@ -55,14 +57,16 @@ private:
     QGraphicsTextItem *text;
     QGraphicsLineItem *l1;
     QGraphicsEllipseItem *e1;
-    QTimer *timer, *cronometro;
+    QTimer *timer, *cronometro, *timerFr;
     QString rutaFondoActual;
     QGraphicsItem *figEn, *fig;
+    Personaje *vegito, *freezer;
+    Proyectil *bolaFreezer;
 
     QList <QGraphicsRectItem*> obst; //Lista de apuntadores a items rectangulares
 
     void mostrarMenuInicio();
-    void ponerFondo(QString);
+    void ponerFondo(QString, float opacity=0.8);
 
     void ajustarFondo();
 

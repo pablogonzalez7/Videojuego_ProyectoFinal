@@ -4,5 +4,10 @@
         <file>images/backgrounds/background_main.jpg</file>
         <file>images/backgrounds/botonInicio.png</file>
         <file>images/backgrounds/titulo.png</file>
+        <file>images/backgrounds/nivel1.png</file>
+        <file>images/sprites/vegitoBateoQuieto.png</file>
+        <file>images/sprites/vegitoBateo.png</file>
+        <file>images/sprites/freezerPitcher.png</file>
+        <file>images/sprites/bolaFreezer.png</file>
     </qresource>
 </RCC>
