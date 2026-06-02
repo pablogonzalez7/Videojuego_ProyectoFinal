@@ -7,7 +7,11 @@ Proyectil::Proyectil(QGraphicsScene *scene,
                      const QString &rutaImagen,
                      QPointF posicionInicial)
 {
-    QPixmap pixmap(rutaImagen);
+    rutaSprite = rutaImagen;
+
+    // MainWindow suministra la imagen del proyectil y el punto desde el cual
+    // debe aparecer visualmente en la escena.
+    QPixmap pixmap(rutaSprite);
 
     /*
         Se escala la bola a un tamaño base de 35x35.
@@ -34,11 +38,15 @@ Proyectil::Proyectil(QGraphicsScene *scene,
 
     proyectil->setPos(posicionInicial);
     proyectil->setZValue(5);
+    proyectil->setVisible(true);
 
+    // La escala debe crecer desde el centro para simular altura sin desplazar
+    // la bola hacia un lado cuando cambia de tamaño.
     proyectil->setTransformOriginPoint(proyectil->boundingRect().center());
 
     vx = 0;
     vy = 5;
+    activa = true;
 
     estado = LanzadaPorFreezer;
 
@@ -79,7 +87,13 @@ Proyectil::Proyectil(QGraphicsScene *scene,
     */
     fuerzaCurva = QRandomGenerator::global()->bounded(15, 36);
 
+    ataqueActual.velocidad = 3.6f;
+    ataqueActual.dano = 1.0f;
+
     timerP = new QTimer(this);
+
+    // Este timer quedó preparado para mover el proyectil de forma autónoma si
+    // en el futuro se desacopla más lógica de MainWindow.
     connect(timerP, &QTimer::timeout, this, &Proyectil::movProyectil);
 }
 
@@ -101,11 +115,13 @@ Proyectil::~Proyectil()
 
 void Proyectil::iniciarTimerProyectil()
 {
+    // Frecuencia cercana a 60 FPS para movimiento fluido.
     timerP->start(16);
 }
 
 void Proyectil::detenerTimerProyectil()
 {
+    // Se puede pausar el movimiento interno si el control se hace externamente.
     timerP->stop();
 }
 
@@ -131,6 +147,7 @@ void Proyectil::moverLanzamiento(float velocidad, bool oscilatorio)
 
     tiempo += 0.016;
 
+    // La componente vertical siempre baja la bola hacia Vegito.
     qreal nuevaX = proyectil->pos().x();
     qreal nuevaY = proyectil->pos().y() + velocidad;
 
@@ -184,6 +201,62 @@ void Proyectil::iniciarBateo(qreal nuevoDestinoX, qreal nuevoDestinoY)
     destinoY = nuevoDestinoY;
 }
 
+void Proyectil::reiniciar(QPointF posicionInicial, const QString &rutaImagen)
+{
+    rutaSprite = rutaImagen;
+
+    QPixmap pixmap(rutaSprite);
+    pixmap = pixmap.scaled(35, 35,
+                           Qt::KeepAspectRatio,
+                           Qt::SmoothTransformation);
+
+    proyectil->setPixmap(pixmap);
+    proyectil->setOffset(-pixmap.width() / 2.0,
+                         -pixmap.height() / 2.0);
+    proyectil->setTransformOriginPoint(proyectil->boundingRect().center());
+    proyectil->setPos(posicionInicial);
+    proyectil->setScale(1.0);
+    proyectil->setVisible(true);
+
+    activa = true;
+    estado = LanzadaPorFreezer;
+
+    tiempo = 0;
+    tiempoVuelo = 0;
+    inicioX = posicionInicial.x();
+    inicioY = posicionInicial.y();
+    destinoX = inicioX;
+    destinoY = inicioY;
+    xBaseOscilacion = posicionInicial.x();
+
+    int lado = QRandomGenerator::global()->bounded(0, 2);
+
+    if (lado == 0) {
+        direccionCurva = -1.0;
+    }
+    else {
+        direccionCurva = 1.0;
+    }
+
+    fuerzaCurva = QRandomGenerator::global()->bounded(15, 36);
+}
+
+void Proyectil::desactivar()
+{
+    activa = false;
+    estado = Caida;
+    tiempo = 0;
+    tiempoVuelo = 0;
+    proyectil->setScale(1.0);
+    proyectil->setVisible(false);
+}
+
+void Proyectil::configurarAtaque(float velocidad, float dano)
+{
+    ataqueActual.velocidad = velocidad;
+    ataqueActual.dano = dano;
+}
+
 void Proyectil::actualizarBateo(float dt)
 {
     /*
@@ -198,6 +271,7 @@ void Proyectil::actualizarBateo(float dt)
 
     tiempoVuelo += dt;
 
+    // Normaliza el avance del vuelo entre 0 y 1 para interpolar trayectorias.
     float t = tiempoVuelo / duracionVuelo;
 
     if (t > 1.0) {
@@ -249,6 +323,8 @@ void Proyectil::ajustarDestino(qreal dx, qreal dy)
         return;
     }
 
+    // No mueve directamente la bola; cambia el punto final hacia el que se
+    // seguirá interpolando en los próximos frames.
     destinoX += dx;
     destinoY += dy;
 }
@@ -271,6 +347,11 @@ Proyectil::EstadoProyectil Proyectil::getEstado() const
     return estado;
 }
 
+bool Proyectil::estaActiva() const
+{
+    return activa;
+}
+
 QGraphicsPixmapItem* Proyectil::getItem() const
 {
     return proyectil;
@@ -281,5 +362,18 @@ QPointF Proyectil::centro() const
     /*
         Retorna el centro visual real de la bola.
     */
+
+    // Se usa sceneBoundingRect() porque incorpora escala y transformaciones,
+    // así que el centro reportado coincide mejor con lo que ve el jugador.
     return proyectil->sceneBoundingRect().center();
+}
+
+float Proyectil::getVelocidadAtaque() const
+{
+    return ataqueActual.velocidad;
+}
+
+float Proyectil::getDanoAtaque() const
+{
+    return ataqueActual.dano;
 }

@@ -16,6 +16,8 @@ MainWindow::MainWindow(QWidget *parent)
     , textoPuntaje(nullptr)
     , textoVidas(nullptr)
     , timerNivel1(nullptr)
+    , botonFacil(nullptr)
+    , botonDificil(nullptr)
 {
     ui->setupUi(this);
 
@@ -32,6 +34,8 @@ MainWindow::MainWindow(QWidget *parent)
     */
     QRect Desktop = QGuiApplication::primaryScreen()->geometry();
 
+    // Se conserva una referencia del tamaño de pantalla disponible; esto ayuda
+    // a mantener proporciones generales del juego respecto al monitor.
     x = Desktop.x();
     y = Desktop.y();
     ancho = Desktop.width() - 100;
@@ -46,6 +50,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     velocidadFreezer = 3.6;
     lanzamientoOscilatorio = false;
+    dificultadSeleccionada = Facil;
 
     bolasPendientesPorLanzar = 0;
     esperandoLanzamientos = false;
@@ -92,10 +97,24 @@ MainWindow::MainWindow(QWidget *parent)
                                              Qt::SmoothTransformation));
 
     ui->labelTitulo->setAlignment(Qt::AlignCenter);
+
+    crearBotonesDificultad();
+    ocultarOpcionesDificultad();
 }
 
 MainWindow::~MainWindow()
 {
+    while (!bolasFreezer.isEmpty()) {
+        Proyectil *bola = bolasFreezer.takeLast();
+        delete bola;
+    }
+
+    while (!bolasDisponibles.isEmpty()) {
+        Proyectil *bola = bolasDisponibles.takeLast();
+        delete bola;
+    }
+
+    // ui libera los widgets creados desde el archivo .ui y sus jerarquías hijas.
     delete ui;
 }
 
@@ -155,30 +174,54 @@ void MainWindow::mostrarMenuInicio()
 void MainWindow::on_botonInicio_clicked()
 {
     /*
-        Al presionar inicio:
-        - se ocultan los elementos del menú,
-        - se carga el fondo del nivel 1,
-        - se crean Vegito y Freezer,
-        - se inicia el timer principal del nivel.
+        El botón de inicio ahora muestra las dos dificultades.
     */
-    ui->labelTitulo->hide();
     ui->botonInicio->hide();
+    mostrarOpcionesDificultad();
+}
+
+void MainWindow::iniciarModoFacil()
+{
+    dificultadSeleccionada = Facil;
+    iniciarNivel1();
+}
+
+void MainWindow::iniciarModoDificil()
+{
+    dificultadSeleccionada = Dificil;
+    iniciarNivel1();
+}
+
+void MainWindow::iniciarNivel1()
+{
+    ui->labelTitulo->hide();
+    ocultarOpcionesDificultad();
 
     ponerFondo(":/images/backgrounds/nivel1.png", 1.0);
 
-    vegito = new Personaje(":/images/sprites/vegitoBateo.png", 5, 650, 540);
-    vegito->agregarAEscena(scene);
+    if (vegito == nullptr) {
+        vegito = new Personaje(":/images/sprites/vegitoBateo.png", 5, 650, 540);
+    }
 
-    freezer = new Personaje(":/images/sprites/freezerPitcher.png", 6, 650, 270);
+    vegito->agregarAEscena(scene);
+    vegito->getSprite()->setPos(650, 540);
+
+    if (freezer == nullptr) {
+        freezer = new Personaje(":/images/sprites/freezerPitcher.png", 6, 650, 270);
+    }
+
     freezer->agregarAEscena(scene);
+    freezer->getSprite()->setPos(650, 270);
 
     iniciarVariablesNivel1();
 
-    timerNivel1 = new QTimer(this);
-    connect(timerNivel1,
-            &QTimer::timeout,
-            this,
-            &MainWindow::actualizarNivel1);
+    if (timerNivel1 == nullptr) {
+        timerNivel1 = new QTimer(this);
+        connect(timerNivel1,
+                &QTimer::timeout,
+                this,
+                &MainWindow::actualizarNivel1);
+    }
 
     timerNivel1->start(16);
 
@@ -196,6 +239,7 @@ void MainWindow::iniciarVariablesNivel1()
 
     velocidadFreezer = 3.6;
     lanzamientoOscilatorio = false;
+    configurarAtaquesFreezer();
 
     bolasPendientesPorLanzar = 0;
     esperandoLanzamientos = false;
@@ -207,6 +251,10 @@ void MainWindow::iniciarVariablesNivel1()
     bolaControlada = nullptr;
 
     bolasFreezer.clear();
+
+    for (int i = 0; i < bolasDisponibles.size(); i++) {
+        bolasDisponibles.at(i)->desactivar();
+    }
 
     /*
         Zonas de puntaje.
@@ -283,6 +331,112 @@ void MainWindow::iniciarVariablesNivel1()
     */
 }
 
+void MainWindow::crearBotonesDificultad()
+{
+    botonFacil = new QPushButton("Facil", ui->centralwidget);
+    botonDificil = new QPushButton("Dificil", ui->centralwidget);
+
+    botonFacil->setGeometry(250, 290, 120, 45);
+    botonDificil->setGeometry(420, 290, 120, 45);
+
+    botonFacil->setStyleSheet(
+        "QPushButton {"
+        "background-color: rgba(30, 120, 30, 220);"
+        "color: white;"
+        "font-weight: bold;"
+        "border: 2px solid white;"
+        "border-radius: 10px;"
+        "}"
+        );
+
+    botonDificil->setStyleSheet(
+        "QPushButton {"
+        "background-color: rgba(150, 30, 30, 220);"
+        "color: white;"
+        "font-weight: bold;"
+        "border: 2px solid white;"
+        "border-radius: 10px;"
+        "}"
+        );
+
+    connect(botonFacil,
+            &QPushButton::clicked,
+            this,
+            &MainWindow::iniciarModoFacil);
+
+    connect(botonDificil,
+            &QPushButton::clicked,
+            this,
+            &MainWindow::iniciarModoDificil);
+}
+
+void MainWindow::mostrarOpcionesDificultad()
+{
+    if (botonFacil != nullptr) {
+        botonFacil->show();
+    }
+
+    if (botonDificil != nullptr) {
+        botonDificil->show();
+    }
+}
+
+void MainWindow::ocultarOpcionesDificultad()
+{
+    if (botonFacil != nullptr) {
+        botonFacil->hide();
+    }
+
+    if (botonDificil != nullptr) {
+        botonDificil->hide();
+    }
+}
+
+void MainWindow::configurarAtaquesFreezer()
+{
+    ataquesFreezer.clear();
+
+    ataquesFreezer.append({3.6f, 1.0f, ":/images/sprites/bolaFreezer.png"});
+
+    if (dificultadSeleccionada == Dificil) {
+        ataquesFreezer.clear();
+        ataquesFreezer.append({3.6f, 1.0f, ":/images/sprites/bolaFreezer.png"});
+        ataquesFreezer.append({4.3f, 1.5f, ":/images/sprites/bolaFreezer.png"});
+        ataquesFreezer.append({5.0f, 2.0f, ":/images/sprites/bolaFreezer.png"});
+    }
+}
+
+MainWindow::AtaqueFreezer MainWindow::obtenerAtaqueActual() const
+{
+    if (ataquesFreezer.isEmpty()) {
+        return {3.6f, 1.0f, ":/images/sprites/bolaFreezer.png"};
+    }
+
+    if (dificultadSeleccionada == Facil) {
+        return ataquesFreezer.first();
+    }
+
+    int indiceAtaque = QRandomGenerator::global()->bounded(ataquesFreezer.size());
+    return ataquesFreezer.at(indiceAtaque);
+}
+
+Proyectil *MainWindow::obtenerBolaDisponible(const AtaqueFreezer &ataque,
+                                             QPointF posicionInicial)
+{
+    Proyectil *bola = nullptr;
+
+    if (!bolasDisponibles.isEmpty()) {
+        bola = bolasDisponibles.takeLast();
+        bola->reiniciar(posicionInicial, ataque.sprite);
+    }
+    else {
+        bola = new Proyectil(scene, ataque.sprite, posicionInicial);
+    }
+
+    bola->configurarAtaque(ataque.velocidad, ataque.dano);
+    return bola;
+}
+
 void MainWindow::programarSiguienteLanzamiento()
 {
     /*
@@ -298,6 +452,8 @@ void MainWindow::programarSiguienteLanzamiento()
         return;
     }
 
+    // Esta bandera impide programar varias tandas al mismo tiempo si el método
+    // vuelve a ser llamado antes de que salgan las bolas pendientes.
     esperandoLanzamientos = true;
 
     /*
@@ -327,7 +483,7 @@ void MainWindow::programarSiguienteLanzamiento()
 void MainWindow::lanzarBolaFreezer()
 {
     /*
-        Crea una bola nueva desde la posición visual de Freezer.
+        Toma una bola del pool o crea una si todavía no existe ninguna.
     */
     if (!nivel1Activo) {
         return;
@@ -351,11 +507,14 @@ void MainWindow::lanzarBolaFreezer()
     QPointF posicionInicial = freezer->getSprite()->sceneBoundingRect().center();
     posicionInicial.setY(posicionInicial.y() + 45);
 
-    Proyectil *nuevaBola = new Proyectil(scene,
-                                         ":/images/sprites/bolaFreezer.png",
-                                         posicionInicial);
+    AtaqueFreezer ataque = obtenerAtaqueActual();
+    Proyectil *nuevaBola = obtenerBolaDisponible(ataque, posicionInicial);
 
+    // Se almacena en la lista global para actualizarla en cada tick del nivel.
     bolasFreezer.append(nuevaBola);
+
+    // También se guarda como última bola creada por compatibilidad con código
+    // previo que trabajaba con un solo proyectil activo.
     bolaFreezer = nuevaBola;
 
     bolasPendientesPorLanzar--;
@@ -384,11 +543,18 @@ void MainWindow::actualizarNivel1()
 
     for (int i = bolasFreezer.size() - 1; i >= 0; i--) {
 
+        // Se recorre hacia atrás porque algunas iteraciones pueden eliminar la
+        // bola actual, y así no se desordenan los índices pendientes.
         Proyectil *bola = bolasFreezer.at(i);
 
         if (bola->getEstado() == Proyectil::LanzadaPorFreezer) {
+            float velocidadAtaque = velocidadFreezer;
 
-            bola->moverLanzamiento(velocidadFreezer,
+            if (dificultadSeleccionada == Dificil) {
+                velocidadAtaque += bola->getVelocidadAtaque() - 3.6f;
+            }
+
+            bola->moverLanzamiento(velocidadAtaque,
                                    lanzamientoOscilatorio);
 
             /*
@@ -397,7 +563,7 @@ void MainWindow::actualizarNivel1()
             */
             if (bola->pasoLinea(vegito->getSprite()->y() + 70)) {
 
-                vidas -= 1.0;
+                vidas -= bola->getDanoAtaque();
                 rachaPuntos = 0;
 
                 eliminarBola(bola);
@@ -469,6 +635,7 @@ void MainWindow::revisarCaidaBola(Proyectil *bola)
         Si cae afuera, pierde media vida.
     */
     if (puntosGanados > 0) {
+        // La racha mide desempeño continuo y desbloquea dobles lanzamientos.
         puntaje += puntosGanados;
         rachaPuntos += puntosGanados;
     }
@@ -522,7 +689,7 @@ void MainWindow::actualizarDificultad()
 void MainWindow::eliminarBola(Proyectil *bola)
 {
     /*
-        Elimina una bola de forma segura.
+        Saca la bola de la lista activa y la devuelve al pool.
     */
     if (bola == nullptr) {
         return;
@@ -530,6 +697,8 @@ void MainWindow::eliminarBola(Proyectil *bola)
 
     bolasFreezer.removeOne(bola);
 
+    // Si la bola eliminada era la que estaba siendo corregida con A/D/W/S, se
+    // anula la referencia para evitar acceso a memoria liberada.
     if (bolaControlada == bola) {
         bolaControlada = nullptr;
     }
@@ -538,7 +707,11 @@ void MainWindow::eliminarBola(Proyectil *bola)
         bolaFreezer = nullptr;
     }
 
-    delete bola;
+    bola->desactivar();
+
+    if (!bolasDisponibles.contains(bola)) {
+        bolasDisponibles.append(bola);
+    }
 }
 
 void MainWindow::actualizarHUD()
@@ -571,6 +744,11 @@ void MainWindow::ganarNivel1()
         timerNivel1->stop();
     }
 
+    while (!bolasFreezer.isEmpty()) {
+        eliminarBola(bolasFreezer.last());
+    }
+
+    // El texto se coloca con Z alto para que quede por encima del fondo y HUD.
     QGraphicsTextItem *mensaje = scene->addText("GANASTE EL NIVEL 1");
     mensaje->setDefaultTextColor(Qt::yellow);
     mensaje->setScale(3);
@@ -591,6 +769,11 @@ void MainWindow::perderNivel1()
         timerNivel1->stop();
     }
 
+    while (!bolasFreezer.isEmpty()) {
+        eliminarBola(bolasFreezer.last());
+    }
+
+    // Misma idea que en victoria: superponer el mensaje al resto de la escena.
     QGraphicsTextItem *mensaje = scene->addText("PERDISTE");
     mensaje->setDefaultTextColor(Qt::red);
     mensaje->setScale(3);
@@ -696,6 +879,7 @@ void MainWindow::keyPressEvent(QKeyEvent *e)
         puedeBatear = false;
 
         QTimer::singleShot(1000, this, [this]() {
+            // Rehabilita el bateo tras un enfriamiento de 1 segundo.
             puedeBatear = true;
         });
 
@@ -714,6 +898,8 @@ void MainWindow::keyPressEvent(QKeyEvent *e)
 
                 QPointF destino = destinoAleatorioBateo();
 
+                // El golpe solo cambia el estado de la bola y define su destino.
+                // El movimiento real se seguirá calculando en actualizarNivel1().
                 bola->iniciarBateo(destino.x(), destino.y());
 
                 bolaControlada = bola;
@@ -736,18 +922,22 @@ void MainWindow::keyPressEvent(QKeyEvent *e)
         nivel1Activo) {
 
         if (e->key() == Qt::Key_A) {
+            // A corre el punto de caída hacia la izquierda.
             bolaControlada->ajustarDestino(-45, 0);
         }
 
         if (e->key() == Qt::Key_D) {
+            // D corre el punto de caída hacia la derecha.
             bolaControlada->ajustarDestino(45, 0);
         }
 
         if (e->key() == Qt::Key_W) {
+            // W hace que la bola termine más arriba en el campo.
             bolaControlada->ajustarDestino(0, -45);
         }
 
         if (e->key() == Qt::Key_S) {
+            // S hace que la bola termine más abajo en el campo.
             bolaControlada->ajustarDestino(0, 45);
         }
     }
@@ -765,6 +955,7 @@ void MainWindow::ajustarFondo()
 
 void MainWindow::resizeEvent(QResizeEvent *event)
 {
+    // Se conserva primero el comportamiento base del widget principal.
     QMainWindow::resizeEvent(event);
 
     /*
@@ -790,6 +981,20 @@ void MainWindow::resizeEvent(QResizeEvent *event)
     ui->labelTitulo->setMinimumHeight(height() / 6);
     ui->botonInicio->setMinimumSize(width() / 6,
                                     height() / 14);
+
+    if (botonFacil != nullptr) {
+        botonFacil->setGeometry(width() / 2 - 150,
+                                height() * 2 / 3,
+                                120,
+                                45);
+    }
+
+    if (botonDificil != nullptr) {
+        botonDificil->setGeometry(width() / 2 + 30,
+                                  height() * 2 / 3,
+                                  120,
+                                  45);
+    }
 
     ajustarFondo();
 }
