@@ -20,11 +20,18 @@
 #include <QKeyEvent>
 #include <QList>
 #include <QPointF>
+#include <QUrl>
 #include <QPushButton>
 #include <QRandomGenerator>
 #include <QFont>
 #include <QBrush>
 #include <QPen>
+#include <QLabel>
+#include <QMediaPlayer>
+
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+#include <QAudioOutput>
+#endif
 
 #include "personaje.h"
 #include "proyectil.h"
@@ -95,6 +102,10 @@ private slots:
 
     void iniciarModoDificil();
 
+    void abrirNivel1DesdeSelector();
+
+    void abrirNivel2DesdeSelector();
+
     /*
         Timer principal del nivel 1.
 
@@ -136,9 +147,32 @@ private:
     // Ruta del fondo actual, usada al redimensionar.
     QString rutaFondoActual;
 
+    // Reproductor del audio del menú inicial.
+    QMediaPlayer *musicaInicio;
+
+    // Efectos que suenan al conectar un batazo válido.
+    QMediaPlayer *audioVegitoYosha;
+    QMediaPlayer *audioBatazoMuchedumbre;
+
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+    QAudioOutput *salidaAudioInicio;
+    QAudioOutput *salidaAudioVegitoYosha;
+    QAudioOutput *salidaAudioBatazoMuchedumbre;
+#endif
+
     // Botones del menú para elegir dificultad.
     QPushButton *botonFacil;
     QPushButton *botonDificil;
+
+    // Textos de la pantalla auxiliar antes de iniciar el nivel.
+    QLabel *labelReglasTitulo;
+    QLabel *labelReglasTexto;
+
+    // Elementos de la transición y selector de niveles.
+    QPushButton *botonNivel1;
+    QPushButton *botonNivel2;
+    QLabel *labelNivel2Titulo;
+    QLabel *labelNivel2Texto;
 
     // Items antiguos o de prueba conservados.
     QGraphicsItem *figEn;
@@ -242,6 +276,28 @@ private:
     void mostrarOpcionesDificultad();
 
     void ocultarOpcionesDificultad();
+
+    void crearTextosReglas();
+
+    void mostrarPantallaReglas();
+
+    void ocultarPantallaReglas();
+
+    void crearPantallaNivel2();
+
+    void mostrarPantallaNivel2();
+
+    void ocultarPantallaNivel2();
+
+    void ocultarElementosNivel1();
+
+    void iniciarAudioInicio();
+
+    void detenerAudioInicio();
+
+    void iniciarAudiosBatazo();
+
+    void reproducirAudiosBatazo();
 
     void configurarAtaquesFreezer();
 

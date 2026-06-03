@@ -8,6 +8,9 @@ MainWindow::MainWindow(QWidget *parent)
     , ui(new Ui::MainWindow)
     , scene(nullptr)
     , fondo(nullptr)
+    , musicaInicio(nullptr)
+    , audioVegitoYosha(nullptr)
+    , audioBatazoMuchedumbre(nullptr)
     , vegito(nullptr)
     , freezer(nullptr)
     , bolaFreezer(nullptr)
@@ -18,6 +21,17 @@ MainWindow::MainWindow(QWidget *parent)
     , timerNivel1(nullptr)
     , botonFacil(nullptr)
     , botonDificil(nullptr)
+    , labelReglasTitulo(nullptr)
+    , labelReglasTexto(nullptr)
+    , botonNivel1(nullptr)
+    , botonNivel2(nullptr)
+    , labelNivel2Titulo(nullptr)
+    , labelNivel2Texto(nullptr)
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+    , salidaAudioInicio(nullptr)
+    , salidaAudioVegitoYosha(nullptr)
+    , salidaAudioBatazoMuchedumbre(nullptr)
+#endif
 {
     ui->setupUi(this);
 
@@ -98,8 +112,14 @@ MainWindow::MainWindow(QWidget *parent)
 
     ui->labelTitulo->setAlignment(Qt::AlignCenter);
 
+    iniciarAudioInicio();
+    iniciarAudiosBatazo();
     crearBotonesDificultad();
+    crearTextosReglas();
+    crearPantallaNivel2();
+    ocultarPantallaReglas();
     ocultarOpcionesDificultad();
+    ocultarPantallaNivel2();
 }
 
 MainWindow::~MainWindow()
@@ -169,15 +189,18 @@ void MainWindow::mostrarMenuInicio()
     fondo = nullptr;
 
     ponerFondo(":/images/backgrounds/background_main.jpg");
+    iniciarAudioInicio();
 }
 
 void MainWindow::on_botonInicio_clicked()
 {
     /*
-        El botón de inicio ahora muestra las dos dificultades.
+        El botón de inicio ahora lleva a una pantalla auxiliar
+        donde se explican reglas, controles y dificultad.
     */
+    detenerAudioInicio();
     ui->botonInicio->hide();
-    mostrarOpcionesDificultad();
+    mostrarPantallaReglas();
 }
 
 void MainWindow::iniciarModoFacil()
@@ -192,10 +215,27 @@ void MainWindow::iniciarModoDificil()
     iniciarNivel1();
 }
 
+void MainWindow::abrirNivel1DesdeSelector()
+{
+    ponerFondo(":/images/backgrounds/background_main.jpg");
+    ui->labelTitulo->show();
+    ocultarPantallaNivel2();
+    ui->botonInicio->hide();
+    mostrarPantallaReglas();
+}
+
+void MainWindow::abrirNivel2DesdeSelector()
+{
+    mostrarPantallaNivel2();
+}
+
 void MainWindow::iniciarNivel1()
 {
+    detenerAudioInicio();
     ui->labelTitulo->hide();
+    ocultarPantallaReglas();
     ocultarOpcionesDificultad();
+    ocultarPantallaNivel2();
 
     ponerFondo(":/images/backgrounds/nivel1.png", 1.0);
 
@@ -204,6 +244,7 @@ void MainWindow::iniciarNivel1()
     }
 
     vegito->agregarAEscena(scene);
+    vegito->getSprite()->setVisible(true);
     vegito->getSprite()->setPos(650, 540);
 
     if (freezer == nullptr) {
@@ -211,6 +252,7 @@ void MainWindow::iniciarNivel1()
     }
 
     freezer->agregarAEscena(scene);
+    freezer->getSprite()->setVisible(true);
     freezer->getSprite()->setPos(650, 270);
 
     iniciarVariablesNivel1();
@@ -336,8 +378,14 @@ void MainWindow::crearBotonesDificultad()
     botonFacil = new QPushButton("Facil", ui->centralwidget);
     botonDificil = new QPushButton("Dificil", ui->centralwidget);
 
-    botonFacil->setGeometry(250, 290, 120, 45);
-    botonDificil->setGeometry(420, 290, 120, 45);
+    botonFacil->setGeometry(width() / 2 - 150,
+                            height() * 3 / 4,
+                            120,
+                            45);
+    botonDificil->setGeometry(width() / 2 + 30,
+                              height() * 3 / 4,
+                              120,
+                              45);
 
     botonFacil->setStyleSheet(
         "QPushButton {"
@@ -370,6 +418,240 @@ void MainWindow::crearBotonesDificultad()
             &MainWindow::iniciarModoDificil);
 }
 
+void MainWindow::crearTextosReglas()
+{
+    labelReglasTitulo = new QLabel("Reglas del Nivel 1", ui->centralwidget);
+    labelReglasTexto = new QLabel(ui->centralwidget);
+
+    labelReglasTitulo->setGeometry(width() / 2 - 220,
+                                   height() / 8,
+                                   440,
+                                   55);
+    labelReglasTexto->setGeometry(width() / 2 - 260,
+                                  height() / 4,
+                                  520,
+                                  height() / 3);
+
+    labelReglasTitulo->setAlignment(Qt::AlignCenter);
+    labelReglasTexto->setAlignment(Qt::AlignLeft | Qt::AlignTop);
+    labelReglasTexto->setWordWrap(true);
+
+    labelReglasTitulo->setStyleSheet(
+        "QLabel {"
+        "color: white;"
+        "font-size: 22px;"
+        "font-weight: bold;"
+        "background-color: rgba(0, 0, 0, 150);"
+        "border: 2px solid white;"
+        "border-radius: 12px;"
+        "padding: 8px;"
+        "}"
+        );
+
+    labelReglasTexto->setStyleSheet(
+        "QLabel {"
+        "color: white;"
+        "font-size: 15px;"
+        "font-weight: bold;"
+        "background-color: rgba(0, 0, 0, 150);"
+        "border: 2px solid white;"
+        "border-radius: 12px;"
+        "padding: 12px;"
+        "}"
+        );
+
+    labelReglasTexto->setText(
+        "Golpea la bola con la tecla P cuando llegue a Vegito.\n"
+        "Despues del bateo usa A, D, W y S para corregir su caida.\n"
+        "Si la bola cae en una zona sumas puntos.\n"
+        "Si la dejas pasar, pierdes vidas.\n"
+        "Ganas el nivel al llegar a 1000 puntos.\n"
+        "Facil: juego igual a como estaba.\n"
+        "Dificil: Freezer puede lanzar 3 ataques con distintos danos y velocidades."
+        );
+}
+
+void MainWindow::crearPantallaNivel2()
+{
+    botonNivel1 = new QPushButton("Nivel 1", ui->centralwidget);
+    botonNivel2 = new QPushButton("Nivel 2", ui->centralwidget);
+    labelNivel2Titulo = new QLabel("Transicion al Nivel 2", ui->centralwidget);
+    labelNivel2Texto = new QLabel(ui->centralwidget);
+
+    botonNivel1->setStyleSheet(
+        "QPushButton {"
+        "background-color: rgba(35, 85, 160, 220);"
+        "color: white;"
+        "font-weight: bold;"
+        "border: 2px solid white;"
+        "border-radius: 10px;"
+        "}"
+        );
+
+    botonNivel2->setStyleSheet(
+        "QPushButton {"
+        "background-color: rgba(170, 90, 20, 220);"
+        "color: white;"
+        "font-weight: bold;"
+        "border: 2px solid white;"
+        "border-radius: 10px;"
+        "}"
+        );
+
+    labelNivel2Titulo->setAlignment(Qt::AlignCenter);
+    labelNivel2Texto->setAlignment(Qt::AlignLeft | Qt::AlignTop);
+    labelNivel2Texto->setWordWrap(true);
+
+    labelNivel2Titulo->setStyleSheet(
+        "QLabel {"
+        "color: white;"
+        "font-size: 22px;"
+        "font-weight: bold;"
+        "background-color: rgba(0, 0, 0, 150);"
+        "border: 2px solid white;"
+        "border-radius: 12px;"
+        "padding: 8px;"
+        "}"
+        );
+
+    labelNivel2Texto->setStyleSheet(
+        "QLabel {"
+        "color: white;"
+        "font-size: 15px;"
+        "font-weight: bold;"
+        "background-color: rgba(0, 0, 0, 150);"
+        "border: 2px solid white;"
+        "border-radius: 12px;"
+        "padding: 12px;"
+        "}"
+        );
+
+    labelNivel2Texto->setText(
+        "Llegaste a la transicion del Nivel 2.\n"
+        "Aqui queda el espacio para mostrar las instrucciones de esta fase.\n"
+        "Desde estos botones puedes volver al Nivel 1 o dejar listo el Nivel 2.\n"
+        "Cuando quieras, luego se puede conectar la jugabilidad real de este nivel."
+        );
+
+    connect(botonNivel1,
+            &QPushButton::clicked,
+            this,
+            &MainWindow::abrirNivel1DesdeSelector);
+
+    connect(botonNivel2,
+            &QPushButton::clicked,
+            this,
+            &MainWindow::abrirNivel2DesdeSelector);
+}
+
+void MainWindow::iniciarAudioInicio()
+{
+    /*
+        Prepara y reproduce la música del menú inicial.
+
+        Se deja en bucle para que acompañe la pantalla
+        de inicio hasta que el jugador empiece a jugar.
+    */
+    if (musicaInicio == nullptr) {
+        musicaInicio = new QMediaPlayer(this);
+
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+        salidaAudioInicio = new QAudioOutput(this);
+        salidaAudioInicio->setVolume(0.35);
+        musicaInicio->setAudioOutput(salidaAudioInicio);
+        musicaInicio->setSource(QUrl("qrc:/images/audios/gt-dragonball-intro.mp3"));
+
+        connect(musicaInicio,
+                &QMediaPlayer::mediaStatusChanged,
+                this,
+                [this](QMediaPlayer::MediaStatus status) {
+                    if (status == QMediaPlayer::EndOfMedia && musicaInicio != nullptr) {
+                        musicaInicio->setPosition(0);
+                        musicaInicio->play();
+                    }
+                });
+#else
+        musicaInicio->setMedia(QUrl("qrc:/images/audios/gt-dragonball-intro.mp3"));
+        musicaInicio->setVolume(35);
+
+        connect(musicaInicio,
+                &QMediaPlayer::mediaStatusChanged,
+                this,
+                [this](QMediaPlayer::MediaStatus status) {
+                    if (status == QMediaPlayer::EndOfMedia && musicaInicio != nullptr) {
+                        musicaInicio->setPosition(0);
+                        musicaInicio->play();
+                    }
+                });
+#endif
+    }
+
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+    if (musicaInicio->playbackState() != QMediaPlayer::PlayingState) {
+        musicaInicio->play();
+    }
+#else
+    if (musicaInicio->state() != QMediaPlayer::PlayingState) {
+        musicaInicio->play();
+    }
+#endif
+}
+
+void MainWindow::detenerAudioInicio()
+{
+    /*
+        Pausa la música del menú cuando el jugador sale
+        de la pantalla inicial.
+    */
+    if (musicaInicio != nullptr) {
+        musicaInicio->stop();
+    }
+}
+
+void MainWindow::iniciarAudiosBatazo()
+{
+    if (audioVegitoYosha == nullptr) {
+        audioVegitoYosha = new QMediaPlayer(this);
+
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+        salidaAudioVegitoYosha = new QAudioOutput(this);
+        salidaAudioVegitoYosha->setVolume(1.0);
+        audioVegitoYosha->setAudioOutput(salidaAudioVegitoYosha);
+        audioVegitoYosha->setSource(QUrl("qrc:/images/audios/vegito-yosha.mp3"));
+#else
+        audioVegitoYosha->setMedia(QUrl("qrc:/images/audios/vegito-yosha.mp3"));
+        audioVegitoYosha->setVolume(100);
+#endif
+    }
+
+    if (audioBatazoMuchedumbre == nullptr) {
+        audioBatazoMuchedumbre = new QMediaPlayer(this);
+
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+        salidaAudioBatazoMuchedumbre = new QAudioOutput(this);
+        salidaAudioBatazoMuchedumbre->setVolume(0.95);
+        audioBatazoMuchedumbre->setAudioOutput(salidaAudioBatazoMuchedumbre);
+        audioBatazoMuchedumbre->setSource(QUrl("qrc:/images/audios/sonido_bateo_muchedumbre.wav"));
+#else
+        audioBatazoMuchedumbre->setMedia(QUrl("qrc:/images/audios/sonido_bateo_muchedumbre.wav"));
+        audioBatazoMuchedumbre->setVolume(95);
+#endif
+    }
+}
+
+void MainWindow::reproducirAudiosBatazo()
+{
+    if (audioVegitoYosha != nullptr) {
+        audioVegitoYosha->setPosition(0);
+        audioVegitoYosha->play();
+    }
+
+    if (audioBatazoMuchedumbre != nullptr) {
+        audioBatazoMuchedumbre->setPosition(0);
+        audioBatazoMuchedumbre->play();
+    }
+}
+
 void MainWindow::mostrarOpcionesDificultad()
 {
     if (botonFacil != nullptr) {
@@ -389,6 +671,102 @@ void MainWindow::ocultarOpcionesDificultad()
 
     if (botonDificil != nullptr) {
         botonDificil->hide();
+    }
+}
+
+void MainWindow::mostrarPantallaReglas()
+{
+    if (labelReglasTitulo != nullptr) {
+        labelReglasTitulo->show();
+    }
+
+    if (labelReglasTexto != nullptr) {
+        labelReglasTexto->show();
+    }
+
+    mostrarOpcionesDificultad();
+}
+
+void MainWindow::ocultarPantallaReglas()
+{
+    if (labelReglasTitulo != nullptr) {
+        labelReglasTitulo->hide();
+    }
+
+    if (labelReglasTexto != nullptr) {
+        labelReglasTexto->hide();
+    }
+}
+
+void MainWindow::mostrarPantallaNivel2()
+{
+    detenerAudioInicio();
+    ponerFondo(":/images/backgrounds/nivel2.png", 1.0);
+    ui->labelTitulo->hide();
+    ocultarPantallaReglas();
+    ocultarOpcionesDificultad();
+    ocultarElementosNivel1();
+
+    if (labelNivel2Titulo != nullptr) {
+        labelNivel2Titulo->show();
+    }
+
+    if (labelNivel2Texto != nullptr) {
+        labelNivel2Texto->show();
+    }
+
+    if (botonNivel1 != nullptr) {
+        botonNivel1->show();
+    }
+
+    if (botonNivel2 != nullptr) {
+        botonNivel2->show();
+    }
+}
+
+void MainWindow::ocultarPantallaNivel2()
+{
+    if (labelNivel2Titulo != nullptr) {
+        labelNivel2Titulo->hide();
+    }
+
+    if (labelNivel2Texto != nullptr) {
+        labelNivel2Texto->hide();
+    }
+
+    if (botonNivel1 != nullptr) {
+        botonNivel1->hide();
+    }
+
+    if (botonNivel2 != nullptr) {
+        botonNivel2->hide();
+    }
+}
+
+void MainWindow::ocultarElementosNivel1()
+{
+    while (!bolasFreezer.isEmpty()) {
+        eliminarBola(bolasFreezer.last());
+    }
+
+    if (vegito != nullptr) {
+        vegito->getSprite()->setVisible(false);
+    }
+
+    if (freezer != nullptr) {
+        freezer->getSprite()->setVisible(false);
+    }
+
+    if (panelHUD != nullptr) {
+        panelHUD->setVisible(false);
+    }
+
+    if (textoPuntaje != nullptr) {
+        textoPuntaje->setVisible(false);
+    }
+
+    if (textoVidas != nullptr) {
+        textoVidas->setVisible(false);
     }
 }
 
@@ -734,7 +1112,7 @@ void MainWindow::actualizarHUD()
 void MainWindow::ganarNivel1()
 {
     /*
-        Detiene el nivel al ganar.
+        Detiene el nivel y pasa a la pantalla de transición del nivel 2.
     */
     nivel1Activo = false;
     esperandoLanzamientos = false;
@@ -748,12 +1126,7 @@ void MainWindow::ganarNivel1()
         eliminarBola(bolasFreezer.last());
     }
 
-    // El texto se coloca con Z alto para que quede por encima del fondo y HUD.
-    QGraphicsTextItem *mensaje = scene->addText("GANASTE EL NIVEL 1");
-    mensaje->setDefaultTextColor(Qt::yellow);
-    mensaje->setScale(3);
-    mensaje->setPos(420, 330);
-    mensaje->setZValue(20);
+    mostrarPantallaNivel2();
 }
 
 void MainWindow::perderNivel1()
@@ -901,6 +1274,7 @@ void MainWindow::keyPressEvent(QKeyEvent *e)
                 // El golpe solo cambia el estado de la bola y define su destino.
                 // El movimiento real se seguirá calculando en actualizarNivel1().
                 bola->iniciarBateo(destino.x(), destino.y());
+                reproducirAudiosBatazo();
 
                 bolaControlada = bola;
                 golpeo = true;
@@ -984,16 +1358,58 @@ void MainWindow::resizeEvent(QResizeEvent *event)
 
     if (botonFacil != nullptr) {
         botonFacil->setGeometry(width() / 2 - 150,
-                                height() * 2 / 3,
+                                height() * 3 / 4,
                                 120,
                                 45);
     }
 
     if (botonDificil != nullptr) {
         botonDificil->setGeometry(width() / 2 + 30,
-                                  height() * 2 / 3,
+                                  height() * 3 / 4,
                                   120,
                                   45);
+    }
+
+    if (labelReglasTitulo != nullptr) {
+        labelReglasTitulo->setGeometry(width() / 2 - 220,
+                                       height() / 8,
+                                       440,
+                                       55);
+    }
+
+    if (labelReglasTexto != nullptr) {
+        labelReglasTexto->setGeometry(width() / 2 - 260,
+                                      height() / 4,
+                                      520,
+                                      height() / 3);
+    }
+
+    if (labelNivel2Titulo != nullptr) {
+        labelNivel2Titulo->setGeometry(width() / 2 - 220,
+                                       height() / 8,
+                                       440,
+                                       55);
+    }
+
+    if (labelNivel2Texto != nullptr) {
+        labelNivel2Texto->setGeometry(width() / 2 - 260,
+                                      height() / 4,
+                                      520,
+                                      height() / 3);
+    }
+
+    if (botonNivel1 != nullptr) {
+        botonNivel1->setGeometry(width() / 2 - 150,
+                                 height() * 3 / 4,
+                                 120,
+                                 45);
+    }
+
+    if (botonNivel2 != nullptr) {
+        botonNivel2->setGeometry(width() / 2 + 30,
+                                 height() * 3 / 4,
+                                 120,
+                                 45);
     }
 
     ajustarFondo();

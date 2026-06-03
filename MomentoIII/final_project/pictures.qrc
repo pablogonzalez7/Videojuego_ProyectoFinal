@@ -5,6 +5,10 @@
         <file>images/backgrounds/botonInicio.png</file>
         <file>images/backgrounds/titulo.png</file>
         <file>images/backgrounds/nivel1.png</file>
+        <file>images/backgrounds/nivel2.png</file>
+        <file>images/audios/gt-dragonball-intro.mp3</file>
+        <file>images/audios/vegito-yosha.mp3</file>
+        <file>images/audios/sonido_bateo_muchedumbre.wav</file>
         <file>images/sprites/vegitoBateoQuieto.png</file>
         <file>images/sprites/vegitoBateo.png</file>
         <file>images/sprites/freezerPitcher.png</file>
