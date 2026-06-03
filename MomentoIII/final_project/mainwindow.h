@@ -46,6 +46,17 @@ class MainWindow : public QMainWindow
     Q_OBJECT
 
 public:
+    struct AtaqueFreezer {
+        float velocidad;
+        float dano;
+        QString sprite;
+    };
+
+    enum DificultadJuego {
+        Facil,
+        Dificil
+    };
+
     explicit MainWindow(QWidget *parent = nullptr);
     ~MainWindow() override;
 
@@ -79,6 +90,10 @@ private slots:
         Oculta el menú y carga el nivel 1.
     */
     void on_botonInicio_clicked();
+
+    void iniciarModoFacil();
+
+    void iniciarModoDificil();
 
     /*
         Timer principal del nivel 1.
@@ -121,6 +136,10 @@ private:
     // Ruta del fondo actual, usada al redimensionar.
     QString rutaFondoActual;
 
+    // Botones del menú para elegir dificultad.
+    QPushButton *botonFacil;
+    QPushButton *botonDificil;
+
     // Items antiguos o de prueba conservados.
     QGraphicsItem *figEn;
     QGraphicsItem *fig;
@@ -135,6 +154,9 @@ private:
 
     // Lista de bolas activas. Permite manejar una o dos bolas.
     QList<Proyectil*> bolasFreezer;
+
+    // Bolas disponibles para volver a usarse.
+    QList<Proyectil*> bolasDisponibles;
 
     // Lista de obstáculos de prueba o futuros obstáculos.
     QList<QGraphicsRectItem*> obst;
@@ -158,6 +180,8 @@ private:
     float vidas;
     float velocidadFreezer;
     float x, y, ancho, alto;
+    DificultadJuego dificultadSeleccionada;
+    QList<AtaqueFreezer> ataquesFreezer;
 
     // Estados del nivel.
     bool lanzamientoOscilatorio;
@@ -187,6 +211,8 @@ private:
     */
     void iniciarVariablesNivel1();
 
+    void iniciarNivel1();
+
     /*
         Crea una nueva bola desde Freezer.
     */
@@ -210,6 +236,19 @@ private:
         Elimina una bola de la escena y de la lista.
     */
     void eliminarBola(Proyectil *bola);
+
+    void crearBotonesDificultad();
+
+    void mostrarOpcionesDificultad();
+
+    void ocultarOpcionesDificultad();
+
+    void configurarAtaquesFreezer();
+
+    AtaqueFreezer obtenerAtaqueActual() const;
+
+    Proyectil *obtenerBolaDisponible(const AtaqueFreezer &ataque,
+                                     QPointF posicionInicial);
 
     /*
         Actualiza los textos de puntaje y vidas.

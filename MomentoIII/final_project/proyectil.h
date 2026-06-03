@@ -27,6 +27,11 @@
 class Proyectil : public QObject
 {
 public:
+    struct DatosAtaque {
+        float velocidad;
+        float dano;
+    };
+
     /*
         Estados posibles de la bola.
 
@@ -117,6 +122,21 @@ public:
     void ajustarDestino(qreal dx, qreal dy);
 
     /*
+        Prepara la bola para volver a usarla desde la posición de Freezer.
+    */
+    void reiniciar(QPointF posicionInicial, const QString &rutaImagen);
+
+    /*
+        Oculta la bola y la deja lista para volver al pool.
+    */
+    void desactivar();
+
+    /*
+        Asigna los datos del ataque actual.
+    */
+    void configurarAtaque(float velocidad, float dano);
+
+    /*
         Retorna true cuando la bola terminó el vuelo después del batazo.
     */
     bool terminoVuelo() const;
@@ -133,6 +153,8 @@ public:
     */
     EstadoProyectil getEstado() const;
 
+    bool estaActiva() const;
+
     /*
         Retorna el QGraphicsPixmapItem real de la bola.
 
@@ -144,6 +166,10 @@ public:
         Retorna el centro real de la bola en la escena.
     */
     QPointF centro() const;
+
+    float getVelocidadAtaque() const;
+
+    float getDanoAtaque() const;
 
 private:
     // Item gráfico que representa visualmente la bola.
@@ -184,6 +210,15 @@ private:
 
     // Qué tanto se curva la bola en el lanzamiento parabólico.
     qreal fuerzaCurva;
+
+    // Indica si la bola se está usando en este momento.
+    bool activa;
+
+    // Ruta del sprite actual para reutilizar el mismo proyectil.
+    QString rutaSprite;
+
+    // Datos del ataque asociado a esta bola.
+    DatosAtaque ataqueActual;
 };
 
 #endif // PROYECTIL_H
