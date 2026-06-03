@@ -1,25 +1,175 @@
 #include "personaje.h"
 
-Personaje::Personaje(const QString &rutaImagen, int cantidadFrames, qreal posX, qreal posY)
+Personaje::Personaje(const QString &rutaQuieto,
+                     int framesQuieto,
+                     const QString &rutaAtaque,
+                     int framesAtaque,
+                     qreal posX,
+                     qreal posY,
+                     float vidaMaximaInicial)
 {
-    // Cada personaje encapsula un Sprite que contiene la imagen y la animación.
-    spritePersonaje = new Sprite(rutaImagen, cantidadFrames);
+    spriteQuietoNormal = {rutaQuieto, framesQuieto};
+    spriteAtaqueNormal = {rutaAtaque, framesAtaque};
+    spriteTransformacion = {"", 0};
+    spriteAtaqueKaioken = {"", 0};
 
-    // Se posiciona desde el inicio para que al agregarlo a la escena ya aparezca
-    // en el lugar correcto del mapa.
-    spritePersonaje->setPos(posX, posY);
+    spritePersonaje = new Sprite(rutaQuieto, framesQuieto);
+
+    posicionX = posX;
+    posicionY = posY;
+    spritePersonaje->setPos(posicionX, posicionY);
+
+    tiempoPorFrameMs = 100;
+    tiempoAcumuladoMs = 0;
+    euforiaDisponible = false;
+    tieneSpritesEuforia = false;
+    animacionActual = SinAnimacion;
+
+    vidaMaxima = vidaMaximaInicial;
+    vidaActual = vidaMaximaInicial;
+}
+
+Personaje::~Personaje()
+{
+    delete spritePersonaje;
+}
+
+void Personaje::configurarSpritesEuforia(const QString &rutaTransformacion,
+                                         int framesTransformacion,
+                                         const QString &rutaAtaqueKaioken,
+                                         int framesAtaqueKaioken)
+{
+    spriteTransformacion = {rutaTransformacion, framesTransformacion};
+    spriteAtaqueKaioken = {rutaAtaqueKaioken, framesAtaqueKaioken};
+    tieneSpritesEuforia = true;
 }
 
 void Personaje::agregarAEscena(QGraphicsScene *scene)
 {
-    // La validación evita referencias nulas y agregar dos veces el mismo item.
-    if(scene != nullptr && spritePersonaje->scene() != scene){
+    if (scene != nullptr && spritePersonaje->scene() != scene) {
         scene->addItem(spritePersonaje);
     }
 }
 
 Sprite *Personaje::getSprite() const
 {
-    // MainWindow usa este puntero para iniciar animaciones y revisar colisiones.
     return spritePersonaje;
+}
+
+void Personaje::setPos(qreal posX, qreal posY)
+{
+    posicionX = posX;
+    posicionY = posY;
+    spritePersonaje->setPos(posicionX, posicionY);
+}
+
+void Personaje::setVisible(bool visible)
+{
+    spritePersonaje->setVisible(visible);
+}
+
+void Personaje::actualizar(int dtMs)
+{
+    if (animacionActual == SinAnimacion) {
+        return;
+    }
+
+    tiempoAcumuladoMs += dtMs;
+
+    while (tiempoAcumuladoMs >= tiempoPorFrameMs) {
+        tiempoAcumuladoMs -= tiempoPorFrameMs;
+
+        if (spritePersonaje->avanzarFrame()) {
+            if (animacionActual == AnimacionTransformacion) {
+                euforiaDisponible = true;
+            }
+
+            animacionActual = SinAnimacion;
+            mostrarSpriteQuieto();
+            break;
+        }
+    }
+}
+
+void Personaje::reproducirAtaque()
+{
+    if (euforiaDisponible && tieneSpritesEuforia) {
+        iniciarAnimacion(spriteAtaqueKaioken, AnimacionAtaque);
+        return;
+    }
+
+    iniciarAnimacion(spriteAtaqueNormal, AnimacionAtaque);
+}
+
+void Personaje::activarEuforia()
+{
+    if (!tieneSpritesEuforia || euforiaDisponible || animacionActual == AnimacionTransformacion) {
+        return;
+    }
+
+    iniciarAnimacion(spriteTransformacion, AnimacionTransformacion);
+}
+
+bool Personaje::estaEnEuforia() const
+{
+    return euforiaDisponible;
+}
+
+bool Personaje::estaAnimando() const
+{
+    return animacionActual != SinAnimacion;
+}
+
+float Personaje::getVidaActual() const
+{
+    return vidaActual;
+}
+
+float Personaje::getVidaMaxima() const
+{
+    return vidaMaxima;
+}
+
+void Personaje::reiniciarVida()
+{
+    vidaActual = vidaMaxima;
+    euforiaDisponible = false;
+    tiempoAcumuladoMs = 0;
+    animacionActual = SinAnimacion;
+    mostrarSpriteQuieto();
+}
+
+void Personaje::recibirDanio(float dano)
+{
+    vidaActual -= dano;
+
+    if (vidaActual < 0.0f) {
+        vidaActual = 0.0f;
+    }
+}
+
+void Personaje::mostrarSpriteQuieto()
+{
+    if (euforiaDisponible && tieneSpritesEuforia) {
+        spritePersonaje->cambiarSprite(spriteAtaqueKaioken.ruta,
+                                       spriteAtaqueKaioken.frames);
+        spritePersonaje->reiniciarAnimacion();
+        return;
+    }
+
+    spritePersonaje->cambiarSprite(spriteQuietoNormal.ruta,
+                                   spriteQuietoNormal.frames);
+    spritePersonaje->reiniciarAnimacion();
+}
+
+void Personaje::iniciarAnimacion(const DatosSprite &datos, TipoAnimacion tipo)
+{
+    if (datos.ruta.isEmpty()) {
+        return;
+    }
+
+    tiempoAcumuladoMs = 0;
+    animacionActual = tipo;
+    spritePersonaje->cambiarSprite(datos.ruta, datos.frames);
+    spritePersonaje->reiniciarAnimacion();
 }

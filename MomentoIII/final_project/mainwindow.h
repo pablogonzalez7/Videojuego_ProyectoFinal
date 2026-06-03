@@ -1,38 +1,40 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
-#include <QMainWindow>
+#include <QColor>
+#include <QDebug>
+#include <QFont>
+#include <QGraphicsEllipseItem>
 #include <QGraphicsItem>
+#include <QGraphicsLineItem>
+#include <QGraphicsPathItem>
 #include <QGraphicsPixmapItem>
+#include <QGraphicsRectItem>
 #include <QGraphicsScene>
 #include <QGraphicsTextItem>
-#include <QGraphicsLineItem>
-#include <QGraphicsEllipseItem>
-#include <QGraphicsRectItem>
-#include <QRectF>
-#include <QDebug>
 #include <QGuiApplication>
-#include <QScreen>
-#include <QRect>
-#include <QString>
-#include <QTimer>
-#include <QResizeEvent>
 #include <QKeyEvent>
+#include <QLabel>
 #include <QList>
+#include <QMainWindow>
+#include <QMediaPlayer>
+#include <QPainterPath>
 #include <QPointF>
-#include <QUrl>
 #include <QPushButton>
 #include <QRandomGenerator>
-#include <QFont>
-#include <QBrush>
-#include <QPen>
-#include <QLabel>
-#include <QMediaPlayer>
+#include <QRect>
+#include <QResizeEvent>
+#include <QScreen>
+#include <QString>
+#include <QTimer>
+#include <QUrl>
+#include <QPolygonF>
 
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
 #include <QAudioOutput>
 #endif
 
+#include "barravida.h"
 #include "personaje.h"
 #include "proyectil.h"
 
@@ -45,8 +47,8 @@ QT_END_NAMESPACE
 /*
     MainWindow
 
-    Maneja la ventana principal, la escena gráfica, el menú,
-    el nivel 1, los personajes, las bolas, el puntaje y las vidas.
+    Conserva el flujo general del juego y el menú, pero varias tareas
+    puntuales ahora se delegan a Personaje y BarraVida.
 */
 class MainWindow : public QMainWindow
 {
@@ -67,90 +69,43 @@ public:
     explicit MainWindow(QWidget *parent = nullptr);
     ~MainWindow() override;
 
-    /*
-        Función reservada para cambiar escenas.
-
-        Por ahora no se usa de forma completa, pero se mantiene
-        para futuras pantallas o niveles.
-    */
     void setEscena(short numEscena);
 
 protected:
-    /*
-        Ajusta el fondo y los elementos visuales cuando cambia
-        el tamaño de la ventana.
-    */
     void resizeEvent(QResizeEvent *event) override;
-
-    /*
-        Maneja las teclas del juego.
-
-        P: batear.
-        A, D, W, S: ajustar caída de la bola después del batazo.
-    */
     void keyPressEvent(QKeyEvent *e) override;
 
 private slots:
-    /*
-        Slot del botón de inicio.
-
-        Oculta el menú y carga el nivel 1.
-    */
     void on_botonInicio_clicked();
-
     void iniciarModoFacil();
-
     void iniciarModoDificil();
-
     void abrirNivel1DesdeSelector();
-
     void abrirNivel2DesdeSelector();
-
-    /*
-        Timer principal del nivel 1.
-
-        Actualiza la posición de las bolas, revisa vidas,
-        puntaje, caída y victoria/derrota.
-    */
     void actualizarNivel1();
 
 public slots:
-    /*
-        Slot conservado por compatibilidad con el código anterior.
-
-        Llama a lanzarBolaFreezer().
-    */
     void moveFig();
 
 private:
     Ui::MainWindow *ui;
-
-    // Escena principal del juego.
     QGraphicsScene *scene;
-
-    // Fondo de la escena.
     QGraphicsPixmapItem *fondo;
 
-    // Elementos antiguos o de prueba que se conservan.
+    // Elementos antiguos conservados por compatibilidad.
     QGraphicsTextItem *text;
     QGraphicsLineItem *l1;
     QGraphicsEllipseItem *e1;
+    QGraphicsItem *figEn;
+    QGraphicsItem *fig;
 
-    // Timers generales.
     QTimer *timer;
     QTimer *cronometro;
     QTimer *timerFr;
-
-    // Timer principal para actualizar el nivel 1.
     QTimer *timerNivel1;
 
-    // Ruta del fondo actual, usada al redimensionar.
     QString rutaFondoActual;
 
-    // Reproductor del audio del menú inicial.
     QMediaPlayer *musicaInicio;
-
-    // Efectos que suenan al conectar un batazo válido.
     QMediaPlayer *audioVegitoYosha;
     QMediaPlayer *audioBatazoMuchedumbre;
 
@@ -160,190 +115,91 @@ private:
     QAudioOutput *salidaAudioBatazoMuchedumbre;
 #endif
 
-    // Botones del menú para elegir dificultad.
     QPushButton *botonFacil;
     QPushButton *botonDificil;
-
-    // Textos de la pantalla auxiliar antes de iniciar el nivel.
     QLabel *labelReglasTitulo;
     QLabel *labelReglasTexto;
-
-    // Elementos de la transición y selector de niveles.
     QPushButton *botonNivel1;
     QPushButton *botonNivel2;
     QLabel *labelNivel2Titulo;
     QLabel *labelNivel2Texto;
 
-    // Items antiguos o de prueba conservados.
-    QGraphicsItem *figEn;
-    QGraphicsItem *fig;
-
-    // Personajes principales del nivel 1.
     Personaje *vegito;
     Personaje *freezer;
 
-    // Bola actual y bola que el jugador está controlando.
+    BarraVida barraVidaVegito;
+    BarraVida barraVidaFreezer;
+    QGraphicsTextItem *textoEstadoKaioken;
+
     Proyectil *bolaFreezer;
     Proyectil *bolaControlada;
-
-    // Lista de bolas activas. Permite manejar una o dos bolas.
     QList<Proyectil*> bolasFreezer;
-
-    // Bolas disponibles para volver a usarse.
     QList<Proyectil*> bolasDisponibles;
-
-    // Lista de obstáculos de prueba o futuros obstáculos.
     QList<QGraphicsRectItem*> obst;
+    QList<QGraphicsPathItem*> debugZonas;
 
-    // Panel y textos del HUD.
-    QGraphicsRectItem *panelHUD;
-    QGraphicsTextItem *textoPuntaje;
-    QGraphicsTextItem *textoVidas;
+    QPainterPath zonaDanioBajo;
+    QPainterPath zonaDanioMedio;
+    QPainterPath zonaDanioAlto;
 
-    // Zonas de puntaje del campo.
-    QRectF zona10;
-    QRectF zona20;
-    QRectF zona30;
-
-    // Variables de puntaje.
-    int puntaje;
-    int rachaPuntos;
+    float rachaDanio;
     int bolasPendientesPorLanzar;
-
-    // Variables de vidas y dificultad.
-    float vidas;
     float velocidadFreezer;
-    float x, y, ancho, alto;
+    float x;
+    float y;
+    float ancho;
+    float alto;
     DificultadJuego dificultadSeleccionada;
     QList<AtaqueFreezer> ataquesFreezer;
 
-    // Estados del nivel.
     bool lanzamientoOscilatorio;
     bool esperandoLanzamientos;
     bool nivel1Activo;
     bool puedeBatear;
 
-    /*
-        Muestra el menú inicial.
-    */
     void mostrarMenuInicio();
-
-    /*
-        Coloca el fondo de la escena.
-
-        opacity permite controlar transparencia del fondo.
-    */
     void ponerFondo(QString ruta, float opacity = 0.8);
-
-    /*
-        Ajusta el fondo al tamaño actual de la ventana.
-    */
     void ajustarFondo();
-
-    /*
-        Inicializa las variables del nivel 1.
-    */
     void iniciarVariablesNivel1();
-
     void iniciarNivel1();
-
-    /*
-        Crea una nueva bola desde Freezer.
-    */
     void lanzarBolaFreezer();
-
-    /*
-        Programa el siguiente lanzamiento.
-
-        Si hay racha suficiente, puede programar dos bolas.
-    */
     void programarSiguienteLanzamiento();
-
-    /*
-        Revisa dónde cayó la bola bateada.
-
-        Suma puntos o resta vida según la zona.
-    */
     void revisarCaidaBola(Proyectil *bola);
-
-    /*
-        Elimina una bola de la escena y de la lista.
-    */
     void eliminarBola(Proyectil *bola);
 
     void crearBotonesDificultad();
-
     void mostrarOpcionesDificultad();
-
     void ocultarOpcionesDificultad();
-
     void crearTextosReglas();
-
     void mostrarPantallaReglas();
-
     void ocultarPantallaReglas();
-
     void crearPantallaNivel2();
-
     void mostrarPantallaNivel2();
-
     void ocultarPantallaNivel2();
-
     void ocultarElementosNivel1();
 
     void iniciarAudioInicio();
-
     void detenerAudioInicio();
-
     void iniciarAudiosBatazo();
-
     void reproducirAudiosBatazo();
-
     void configurarAtaquesFreezer();
 
-    AtaqueFreezer obtenerAtaqueActual() const;
+    void configurarZonasBateo();
+    void limpiarZonasDebug();
+    void crearHUDNivel1();
+    void actualizarHUD();
+    void actualizarDificultad();
+    void revisarEuforiaVegito();
 
+    AtaqueFreezer obtenerAtaqueActual() const;
     Proyectil *obtenerBolaDisponible(const AtaqueFreezer &ataque,
                                      QPointF posicionInicial);
-
-    /*
-        Actualiza los textos de puntaje y vidas.
-    */
-    void actualizarHUD();
-
-    /*
-        Actualiza dificultad según el puntaje:
-
-        0-250: parabólico.
-        250-500: oscilatorio.
-        500-750: parabólico.
-        750-1000: oscilatorio.
-    */
-    void actualizarDificultad();
-
-    /*
-        Finaliza el nivel con victoria.
-    */
-    void ganarNivel1();
-
-    /*
-        Finaliza el nivel con derrota.
-    */
-    void perderNivel1();
-
-    /*
-        Revisa si la bola está tocando a Vegito.
-
-        Se usa para decidir si el batazo fue válido.
-    */
     bool bolaEnZonaBateo(Proyectil *bola);
-
-    /*
-        Genera un destino aleatorio para la bola bateada.
-
-        A veces cae dentro, a veces afuera, para obligar a usar A/D/W/S.
-    */
     QPointF destinoAleatorioBateo();
+    float calcularDanioFreezer(const QPointF &posicionCaida) const;
+
+    void ganarNivel1();
+    void perderNivel1();
 };
 
 #endif // MAINWINDOW_H

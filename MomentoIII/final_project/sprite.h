@@ -1,56 +1,57 @@
 #ifndef SPRITE_H
 #define SPRITE_H
 
-#include <QObject>
+#include <QGraphicsItem>
+#include <QPainter>
+#include <QPixmap>
 #include <QString>
-
-#include "QGraphicsItem"
-#include "QTimer"
-#include "QPixmap"
-#include "QPainter"
 
 /*
     Clase Sprite
 
-    Implementa un objeto animado dentro de QGraphicsScene a partir de una hoja
-    de sprites horizontal. Hereda de QGraphicsItem para poder dibujarse y de
-    QObject para integrarse con timers y el sistema de slots de Qt.
+    Representa una hoja de sprites horizontal dentro de la escena.
+    Esta versión es un item gráfico puro: no tiene timers ni slots propios.
 */
-class Sprite : public QObject, public QGraphicsItem
+class Sprite : public QGraphicsItem
 {
-    Q_OBJECT
 public:
-    // Carga la imagen con todos los frames y calcula el tamaño de cada cuadro.
-    explicit Sprite(const QString &rutaImagen, int cantidadFrames, QObject *parent = nullptr);
+    explicit Sprite(const QString &rutaImagen, int cantidadFrames);
 
-    // Reinicia la animación y arranca el timer que avanza los frames.
-    void iniciarAnimacion();
+    /*
+        Cambia la hoja de sprites completa.
 
-    // Controla cuándo pasar al siguiente frame.
-    QTimer *timer;
+        Se usa cuando Vegito entra en kaioken o cuando un personaje
+        necesita mostrar otra animación distinta.
+    */
+    void cambiarSprite(const QString &rutaImagen, int cantidadFrames);
 
-    // Hoja completa de sprites de la animación.
-    QPixmap *pixmap;
+    /*
+        Regresa la animación al primer frame.
+    */
+    void reiniciarAnimacion();
 
-    // Frame actualmente visible.
+    /*
+        Avanza un frame.
+
+        Retorna true cuando ya llegó al final de la animación.
+    */
+    bool avanzarFrame();
+
+    int getTotalFrames() const;
+
+    QRectF boundingRect() const override;
+    void paint(QPainter *painter,
+               const QStyleOptionGraphicsItem *option,
+               QWidget *widget) override;
+
+private:
+    void cargarHoja(const QString &rutaImagen, int cantidadFrames);
+
+    QPixmap pixmap;
     int frameActual;
-
-    // Número total de frames contenidos en la hoja.
     int totalFrames;
-
-    // Medidas de un frame individual.
     qreal ancho;
     qreal alto;
-
-    // Define el área ocupada por el item para colisiones y repintado.
-    QRectF boundingRect() const;
-
-    // Dibuja en pantalla únicamente el frame seleccionado.
-    void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
-
-public slots:
-    // Avanza la animación un frame y solicita redibujado.
-    void actualizacion();
 };
 
 #endif // SPRITE_H

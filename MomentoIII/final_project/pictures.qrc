@@ -11,6 +11,8 @@
         <file>images/audios/sonido_bateo_muchedumbre.wav</file>
         <file>images/sprites/vegitoBateoQuieto.png</file>
         <file>images/sprites/vegitoBateo.png</file>
+        <file>images/sprites/transformacion_vegito.png</file>
+        <file>images/sprites/vegito_bateo_kaioken.png</file>
         <file>images/sprites/freezerPitcher.png</file>
         <file>images/sprites/bolaFreezer.png</file>
     </qresource>

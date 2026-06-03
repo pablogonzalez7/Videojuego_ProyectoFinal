@@ -9,26 +9,77 @@
 /*
     Clase Personaje
 
-    Sirve como una capa simple sobre Sprite para representar entidades del juego
-    como Vegito y Freezer. De esta forma MainWindow trabaja con personajes a
-    nivel lógico y delega en Sprite el dibujo y la animación cuadro a cuadro.
+    Encapsula la parte gráfica y el estado básico de vida de un personaje.
+    También centraliza la animación para evitar usar un timer por sprite.
 */
 class Personaje
 {
 public:
-    // Crea el personaje, carga su hoja de sprites y fija su posición inicial.
-    Personaje(const QString &rutaImagen, int cantidadFrames, qreal posX, qreal posY);
+    struct DatosSprite {
+        QString ruta;
+        int frames;
+    };
 
-    // Inserta el sprite en la escena solo si la escena es válida y el personaje
-    // todavía no pertenece a esa misma escena.
+    enum TipoAnimacion {
+        SinAnimacion,
+        AnimacionAtaque,
+        AnimacionTransformacion
+    };
+
+    Personaje(const QString &rutaQuieto,
+              int framesQuieto,
+              const QString &rutaAtaque,
+              int framesAtaque,
+              qreal posX,
+              qreal posY,
+              float vidaMaxima);
+    ~Personaje();
+
+    void configurarSpritesEuforia(const QString &rutaTransformacion,
+                                  int framesTransformacion,
+                                  const QString &rutaAtaqueKaioken,
+                                  int framesAtaqueKaioken);
+
     void agregarAEscena(QGraphicsScene *scene);
-
-    // Expone el sprite interno para animaciones, posición y colisiones.
     Sprite *getSprite() const;
 
+    void setPos(qreal posX, qreal posY);
+    void setVisible(bool visible);
+
+    void actualizar(int dtMs);
+    void reproducirAtaque();
+    void activarEuforia();
+
+    bool estaEnEuforia() const;
+    bool estaAnimando() const;
+
+    float getVidaActual() const;
+    float getVidaMaxima() const;
+    void reiniciarVida();
+    void recibirDanio(float dano);
+
 private:
-    // Item gráfico que representa al personaje dentro de la escena.
+    void mostrarSpriteQuieto();
+    void iniciarAnimacion(const DatosSprite &datos, TipoAnimacion tipo);
+
     Sprite *spritePersonaje;
+
+    DatosSprite spriteQuietoNormal;
+    DatosSprite spriteAtaqueNormal;
+    DatosSprite spriteTransformacion;
+    DatosSprite spriteAtaqueKaioken;
+
+    qreal posicionX;
+    qreal posicionY;
+
+    int tiempoPorFrameMs;
+    int tiempoAcumuladoMs;
+    bool euforiaDisponible;
+    bool tieneSpritesEuforia;
+    TipoAnimacion animacionActual;
+
+    float vidaMaxima;
+    float vidaActual;
 };
 
 #endif // PERSONAJE_H
