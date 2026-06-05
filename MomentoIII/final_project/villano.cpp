@@ -6,8 +6,10 @@ Villano::Villano(const QString &rutaQuieto,int framesQuieto,const QString &rutaA
     : Personaje(rutaQuieto,framesQuieto,rutaAtaque,framesAtaque,posX,posY,vidaMaxima)
 {
     ultimoAciertoJugador = false;
+    ultimaPosicionJugador = QPointF(posX, posY);
     tipoAtaqueActual = 0;
     velocidadAtaque = 3.6f;
+    sesgoCentro = 1;
 }
 
 void Villano::configurarAtaques(const QList<Ataque> &nuevosAtaques)
@@ -31,7 +33,8 @@ Villano::Ataque Villano::elegirAtaque()
                 1.0f,
                 ":/images/sprites/bolaFreezer.png",
                 ":/images/sprites/freezerPitcher.png",
-                6};
+                6,
+                {}};
     }
 
     tipoAtaqueActual = razonar();
@@ -52,12 +55,26 @@ void Villano::reproducirAtaqueActual()
     }
 
     const Ataque &ataque = ataques.at(tipoAtaqueActual);
+    if (!ataque.framesRecorteLanzamiento.isEmpty()) {
+        tiempoAcumuladoMs = 0;
+        tiempoRetencionAnimacionMs = 0;
+        animacionActual = AnimacionAtaque;
+        spritePersonaje->cambiarSprite(ataque.spriteLanzamiento, ataque.framesRecorteLanzamiento);
+        spritePersonaje->reiniciarAnimacion();
+        return;
+    }
+
     iniciarAnimacion({ataque.spriteLanzamiento, ataque.framesLanzamiento}, AnimacionAtaque);
 }
 
 void Villano::percibir(bool aciertoJugador)
 {
     ultimoAciertoJugador = aciertoJugador;
+}
+
+void Villano::percibirPosicionJugador(const QPointF &posicionJugador)
+{
+    ultimaPosicionJugador = posicionJugador;
 }
 
 short Villano::razonar()
@@ -89,6 +106,25 @@ short Villano::razonar()
     return static_cast<short>(mejorIndice);
 }
 
+QPointF Villano::razonarDestinoLejano(const QRectF &limitesEscena) const
+{
+    const qreal margenHorizontal = limitesEscena.width() * 0.12;
+    const qreal margenVertical = limitesEscena.height() * 0.18;
+    const qreal centroEscena = limitesEscena.center().x();
+    const qreal umbralCentro = limitesEscena.width() * 0.10;
+
+    qreal destinoX = limitesEscena.left() + margenHorizontal;
+
+    if (ultimaPosicionJugador.x() < centroEscena - umbralCentro) {
+        destinoX = limitesEscena.right() - margenHorizontal;
+    }
+    else if (ultimaPosicionJugador.x() <= centroEscena + umbralCentro && sesgoCentro > 0) {
+        destinoX = limitesEscena.right() - margenHorizontal;
+    }
+
+    return QPointF(destinoX, limitesEscena.bottom() - margenVertical);
+}
+
 Proyectil *Villano::actuar(QGraphicsScene *scene, QPointF posicionInicial)
 {
     Ataque ataque = elegirAtaque();
@@ -110,6 +146,13 @@ void Villano::aprender(bool aciertoJugador)
     }
     else {
         fallosPorAtaque[tipoAtaqueActual]++;
+    }
+}
+
+void Villano::aprenderTrayectoria(bool impactoJugador)
+{
+    if (impactoJugador) {
+        sesgoCentro = -sesgoCentro;
     }
 }
 

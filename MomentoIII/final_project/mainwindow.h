@@ -31,6 +31,7 @@
 #include <QTimer>
 #include <QUrl>
 #include <QPolygonF>
+#include <QtMath>
 
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
 #include <QAudioOutput>
@@ -80,6 +81,7 @@ private slots:
     void abrirNivel1DesdeSelector();
     void abrirNivel2DesdeSelector();
     void actualizarNivel1();
+    void actualizarNivel2();
     void iniciarNivel2Facil();
     void iniciarNivel2Dificil();
 
@@ -128,6 +130,7 @@ private:
 
     Jugador *vegito;
     Villano *freezer;
+    Villano *gokuBlack;
     Sprite *gogeta;
 
     QGraphicsRectItem *fondoVidaVegito;
@@ -141,6 +144,7 @@ private:
     QGraphicsTextItem *textoVidaFreezer;
 
     QGraphicsTextItem *textoEstadoKaioken;
+    QGraphicsTextItem *textoEstadoNivel2;
     qreal anchoBarraVida;
     qreal altoBarraVida;
 
@@ -148,6 +152,8 @@ private:
     Proyectil *bolaControlada;
     QList<Proyectil*> bolasFreezer;
     QList<Proyectil*> bolasDisponibles;
+    QList<Proyectil*> bolasBlack;
+    QList<Proyectil*> bolasBlackDisponibles;
     QList<Obstaculo*> obstaculos;
     QList<QGraphicsPathItem*> debugZonas;
 
@@ -169,10 +175,21 @@ private:
     bool esperandoLanzamientos;
     bool nivel1Activo;
     bool nivel2Activo;
+    bool gogetaSaltando;
     bool puedeBatear;
+    bool nivel2EnPausa;
+    bool esperandoLanzamientoBlack;
     QString rutaSpriteGogetaActual;
+    QString rutaSpriteGogetaDireccion;
     qreal posicionGogetaX;
     qreal posicionGogetaY;
+    int vidaGogeta;
+    int tiempoSaltoGogetaMs;
+    int duracionSaltoGogetaMs;
+    int tiempoAnimacionGogetaMs;
+    int tiempoEntreFramesGogetaMs;
+    int disparosEsquivadosNivel2;
+    QTimer *timerNivel2;
 
     void mostrarMenuInicio();
     void ponerFondo(QString ruta, float opacity = 0.8);
@@ -212,6 +229,13 @@ private:
     void actualizarHUD();
     void actualizarDificultad();
     void revisarEuforiaVegito();
+    void iniciarVariablesNivel2();
+    void programarSiguienteLanzamientoBlack();
+    void lanzarBolaBlack();
+    void eliminarBolaBlack(Proyectil *bola);
+    void actualizarSaltoGogeta(int dtMs);
+    void actualizarTextoNivel2();
+    bool spriteColisionaConProyectil(Sprite *sprite, Proyectil *bola) const;
 
     Villano::Ataque obtenerAtaqueActual() const;
     Proyectil *obtenerBolaDisponible(const Villano::Ataque &ataque,QPointF posicionInicial);
@@ -222,6 +246,7 @@ private:
     void ganarNivel1();
     void perderNivel1();
     void moverGogeta(qreal deltaX, const QString &rutaSprite);
+    void saltarGogeta();
 };
 
 #endif // MAINWINDOW_H

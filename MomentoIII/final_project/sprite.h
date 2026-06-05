@@ -5,6 +5,7 @@
 #include <QPainter>
 #include <QPixmap>
 #include <QString>
+#include <QVector>
 
 /*
     Clase Sprite
@@ -24,6 +25,7 @@ public:
         necesita mostrar otra animación distinta.
     */
     void cambiarSprite(const QString &rutaImagen, int cantidadFrames);
+    void cambiarSprite(const QString &rutaImagen, const QVector<QRectF> &framesPersonalizados);
 
     /*
         Regresa la animación al primer frame.
@@ -36,6 +38,9 @@ public:
         Retorna true cuando ya llegó al final de la animación.
     */
     bool avanzarFrame();
+    void setMantenerTamanoVisual(bool mantener);
+    void fijarTamanoVisual(qreal anchoVisible, qreal altoVisible);
+    void limpiarTamanoVisualFijo();
 
     int getTotalFrames() const;
     int getFrameActual() const;
@@ -53,6 +58,13 @@ private:
     int totalFrames;
     qreal ancho;
     qreal alto;
+    qreal anchoBase;
+    qreal altoBase;
+    bool mantenerTamanoVisual;
+    bool usarTamanoVisualFijo;
+    qreal anchoVisualFijo;
+    qreal altoVisualFijo;
+    QVector<QRectF> framesPersonalizados;
 };
 
 #endif // SPRITE_H

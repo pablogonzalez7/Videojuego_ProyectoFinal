@@ -2,13 +2,28 @@
 
 Sprite::Sprite(const QString &rutaImagen, int cantidadFrames)
 {
+    anchoBase = 0;
+    altoBase = 0;
+    mantenerTamanoVisual = false;
+    usarTamanoVisualFijo = false;
+    anchoVisualFijo = 0;
+    altoVisualFijo = 0;
     cargarHoja(rutaImagen, cantidadFrames);
 }
 
 void Sprite::cambiarSprite(const QString &rutaImagen, int cantidadFrames)
 {
     prepareGeometryChange();
+    framesPersonalizados.clear();
     cargarHoja(rutaImagen, cantidadFrames);
+    update();
+}
+
+void Sprite::cambiarSprite(const QString &rutaImagen, const QVector<QRectF> &nuevosFramesPersonalizados)
+{
+    prepareGeometryChange();
+    framesPersonalizados = nuevosFramesPersonalizados;
+    cargarHoja(rutaImagen, framesPersonalizados.size());
     update();
 }
 
@@ -25,6 +40,11 @@ void Sprite::cargarHoja(const QString &rutaImagen, int cantidadFrames)
 
     ancho = pixmap.width() / totalFrames;
     alto = pixmap.height();
+
+    if (mantenerTamanoVisual && (anchoBase <= 0 || altoBase <= 0)) {
+        anchoBase = ancho;
+        altoBase = alto;
+    }
 }
 
 void Sprite::reiniciarAnimacion()
@@ -44,6 +64,37 @@ bool Sprite::avanzarFrame()
     return false;
 }
 
+void Sprite::setMantenerTamanoVisual(bool mantener)
+{
+    prepareGeometryChange();
+    mantenerTamanoVisual = mantener;
+
+    if (mantenerTamanoVisual) {
+        anchoBase = ancho;
+        altoBase = alto;
+    }
+
+    update();
+}
+
+void Sprite::fijarTamanoVisual(qreal anchoVisible, qreal altoVisible)
+{
+    prepareGeometryChange();
+    usarTamanoVisualFijo = true;
+    anchoVisualFijo = anchoVisible;
+    altoVisualFijo = altoVisible;
+    update();
+}
+
+void Sprite::limpiarTamanoVisualFijo()
+{
+    prepareGeometryChange();
+    usarTamanoVisualFijo = false;
+    anchoVisualFijo = 0;
+    altoVisualFijo = 0;
+    update();
+}
+
 int Sprite::getTotalFrames() const
 {
     return totalFrames;
@@ -56,7 +107,19 @@ int Sprite::getFrameActual() const
 
 QRectF Sprite::boundingRect() const
 {
-    return QRectF(-ancho / 2, -alto / 2, ancho, alto);
+    qreal anchoFrameActual = ancho;
+    qreal altoFrameActual = alto;
+
+    if (!framesPersonalizados.isEmpty() &&
+        frameActual >= 0 &&
+        frameActual < framesPersonalizados.size()) {
+        anchoFrameActual = framesPersonalizados.at(frameActual).width();
+        altoFrameActual = framesPersonalizados.at(frameActual).height();
+    }
+
+    const qreal anchoVisible = usarTamanoVisualFijo ? anchoVisualFijo : (mantenerTamanoVisual ? anchoBase : anchoFrameActual);
+    const qreal altoVisible = usarTamanoVisualFijo ? altoVisualFijo : (mantenerTamanoVisual ? altoBase : altoFrameActual);
+    return QRectF(-anchoVisible / 2, -altoVisible / 2, anchoVisible, altoVisible);
 }
 
 void Sprite::paint(QPainter *painter,const QStyleOptionGraphicsItem *option,QWidget *widget)
@@ -64,7 +127,18 @@ void Sprite::paint(QPainter *painter,const QStyleOptionGraphicsItem *option,QWid
     Q_UNUSED(option);
     Q_UNUSED(widget);
 
-    const int origenX = frameActual * static_cast<int>(ancho);
+    QRectF frameOrigen(frameActual * ancho, 0, ancho, alto);
 
-    painter->drawPixmap(QPointF(-ancho / 2, -alto / 2),pixmap,QRectF(origenX, 0, ancho, alto));
+    if (!framesPersonalizados.isEmpty() &&
+        frameActual >= 0 &&
+        frameActual < framesPersonalizados.size()) {
+        frameOrigen = framesPersonalizados.at(frameActual);
+    }
+
+    const qreal anchoVisible = usarTamanoVisualFijo ? anchoVisualFijo : (mantenerTamanoVisual ? anchoBase : frameOrigen.width());
+    const qreal altoVisible = usarTamanoVisualFijo ? altoVisualFijo : (mantenerTamanoVisual ? altoBase : frameOrigen.height());
+
+    painter->drawPixmap(QRectF(-anchoVisible / 2, -altoVisible / 2, anchoVisible, altoVisible),
+                        pixmap,
+                        frameOrigen);
 }
