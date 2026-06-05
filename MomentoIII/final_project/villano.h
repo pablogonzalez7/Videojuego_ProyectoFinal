@@ -21,19 +21,16 @@ public:
     struct Ataque {
         float velocidad;
         float dano;
-        QString sprite;
+        QString spriteProyectil;
+        QString spriteLanzamiento;
+        int framesLanzamiento;
     };
 
-    Villano(const QString &rutaQuieto,
-            int framesQuieto,
-            const QString &rutaAtaque,
-            int framesAtaque,
-            qreal posX,
-            qreal posY,
-            float vidaMaxima);
+    Villano(const QString &rutaQuieto,int framesQuieto,const QString &rutaAtaque,int framesAtaque,qreal posX,qreal posY,float vidaMaxima);
 
     void configurarAtaques(const QList<Ataque> &nuevosAtaques);
     Ataque elegirAtaque();
+    void reproducirAtaqueActual();
 
     void percibir(bool aciertoJugador);
     short razonar();

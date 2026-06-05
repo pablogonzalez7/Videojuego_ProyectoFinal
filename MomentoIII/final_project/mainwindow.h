@@ -80,6 +80,8 @@ private slots:
     void abrirNivel1DesdeSelector();
     void abrirNivel2DesdeSelector();
     void actualizarNivel1();
+    void iniciarNivel2Facil();
+    void iniciarNivel2Dificil();
 
 public slots:
     void moveFig();
@@ -119,11 +121,14 @@ private:
     QLabel *labelReglasTexto;
     QPushButton *botonNivel1;
     QPushButton *botonNivel2;
+    QPushButton *botonNivel2Facil;
+    QPushButton *botonNivel2Dificil;
     QLabel *labelNivel2Titulo;
     QLabel *labelNivel2Texto;
 
     Jugador *vegito;
     Villano *freezer;
+    Sprite *gogeta;
 
     QGraphicsRectItem *fondoVidaVegito;
     QGraphicsRectItem *rellenoVidaVegito;
@@ -163,7 +168,11 @@ private:
     bool lanzamientoOscilatorio;
     bool esperandoLanzamientos;
     bool nivel1Activo;
+    bool nivel2Activo;
     bool puedeBatear;
+    QString rutaSpriteGogetaActual;
+    qreal posicionGogetaX;
+    qreal posicionGogetaY;
 
     void mostrarMenuInicio();
     void ponerFondo(QString ruta, float opacity = 0.8);
@@ -185,6 +194,7 @@ private:
     void mostrarPantallaNivel2();
     void ocultarPantallaNivel2();
     void ocultarElementosNivel1();
+    void ocultarElementosNivel2();
 
     void iniciarAudioInicio();
     void detenerAudioInicio();
@@ -195,21 +205,8 @@ private:
     void configurarZonasBateo();
     void limpiarZonasDebug();
     void crearHUDNivel1();
-    void crearBarraVida(QGraphicsRectItem *&fondoBarra,
-                        QGraphicsRectItem *&rellenoBarra,
-                        QGraphicsRectItem *&bordeBarra,
-                        QGraphicsTextItem *&textoBarra,
-                        qreal x,
-                        qreal y,
-                        const QString &etiqueta,
-                        const QColor &colorRelleno);
-    void actualizarBarraVida(QGraphicsRectItem *rellenoBarra,
-                             QGraphicsTextItem *textoBarra,
-                             qreal x,
-                             qreal y,
-                             const QString &etiqueta,
-                             float vidaActual,
-                             float vidaMaxima);
+    void crearBarraVida(QGraphicsRectItem *&fondoBarra,QGraphicsRectItem *&rellenoBarra,QGraphicsRectItem *&bordeBarra,QGraphicsTextItem *&textoBarra,qreal x,qreal y,const QString &etiqueta,const QColor &colorRelleno);
+    void actualizarBarraVida(QGraphicsRectItem *rellenoBarra,QGraphicsTextItem *textoBarra,qreal x,qreal y,const QString &etiqueta,float vidaActual,float vidaMaxima);
     void setVisibleHUDVida(bool visible);
     void destruirHUDVida();
     void actualizarHUD();
@@ -217,14 +214,14 @@ private:
     void revisarEuforiaVegito();
 
     Villano::Ataque obtenerAtaqueActual() const;
-    Proyectil *obtenerBolaDisponible(const Villano::Ataque &ataque,
-                                     QPointF posicionInicial);
+    Proyectil *obtenerBolaDisponible(const Villano::Ataque &ataque,QPointF posicionInicial);
     bool bolaEnZonaBateo(Proyectil *bola);
     QPointF destinoAleatorioBateo();
     float calcularDanioFreezer(const QPointF &posicionCaida) const;
 
     void ganarNivel1();
     void perderNivel1();
+    void moverGogeta(qreal deltaX, const QString &rutaSprite);
 };
 
 #endif // MAINWINDOW_H

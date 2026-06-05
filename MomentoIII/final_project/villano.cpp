@@ -2,20 +2,8 @@
 
 #include <QRandomGenerator>
 
-Villano::Villano(const QString &rutaQuieto,
-                 int framesQuieto,
-                 const QString &rutaAtaque,
-                 int framesAtaque,
-                 qreal posX,
-                 qreal posY,
-                 float vidaMaxima)
-    : Personaje(rutaQuieto,
-                framesQuieto,
-                rutaAtaque,
-                framesAtaque,
-                posX,
-                posY,
-                vidaMaxima)
+Villano::Villano(const QString &rutaQuieto,int framesQuieto,const QString &rutaAtaque,int framesAtaque,qreal posX,qreal posY,float vidaMaxima)
+    : Personaje(rutaQuieto,framesQuieto,rutaAtaque,framesAtaque,posX,posY,vidaMaxima)
 {
     ultimoAciertoJugador = false;
     tipoAtaqueActual = 0;
@@ -39,7 +27,11 @@ Villano::Ataque Villano::elegirAtaque()
     if (ataques.isEmpty()) {
         tipoAtaqueActual = 0;
         velocidadAtaque = 3.6f;
-        return {3.6f, 1.0f, ":/images/sprites/bolaFreezer.png"};
+        return {3.6f,
+                1.0f,
+                ":/images/sprites/bolaFreezer.png",
+                ":/images/sprites/freezerPitcher.png",
+                6};
     }
 
     tipoAtaqueActual = razonar();
@@ -50,6 +42,17 @@ Villano::Ataque Villano::elegirAtaque()
 
     velocidadAtaque = ataques.at(tipoAtaqueActual).velocidad;
     return ataques.at(tipoAtaqueActual);
+}
+
+void Villano::reproducirAtaqueActual()
+{
+    if (tipoAtaqueActual < 0 || tipoAtaqueActual >= ataques.size()) {
+        reproducirAtaque();
+        return;
+    }
+
+    const Ataque &ataque = ataques.at(tipoAtaqueActual);
+    iniciarAnimacion({ataque.spriteLanzamiento, ataque.framesLanzamiento}, AnimacionAtaque);
 }
 
 void Villano::percibir(bool aciertoJugador)
@@ -63,14 +66,12 @@ short Villano::razonar()
         return 0;
     }
 
-    /*
-        Razonamiento sencillo:
-        - Si solo hay un ataque, siempre se usa ese.
-        - Si hay varios ataques, se favorece el ataque con el que el jugador
-          ha fallado más. Si aún no hay historial, se escoge aleatoriamente.
-    */
+    if (ataques.size() == 1) {
+        return 0;
+    }
+
     int mejorIndice = QRandomGenerator::global()->bounded(ataques.size());
-    int mayorFallos = -1;
+    int mayorFallos = fallosPorAtaque.at(mejorIndice);
 
     for (int i = 0; i < fallosPorAtaque.size(); i++) {
         if (fallosPorAtaque.at(i) > mayorFallos) {
@@ -79,15 +80,21 @@ short Villano::razonar()
         }
     }
 
+    // Mantiene variedad visible en dificil: aun si hay un ataque preferido
+    // por el historial, Freezer explora otros lanzamientos con frecuencia.
+    if (QRandomGenerator::global()->bounded(100) < 45) {
+        mejorIndice = QRandomGenerator::global()->bounded(ataques.size());
+    }
+
     return static_cast<short>(mejorIndice);
 }
 
 Proyectil *Villano::actuar(QGraphicsScene *scene, QPointF posicionInicial)
 {
     Ataque ataque = elegirAtaque();
-    reproducirAtaque();
+    reproducirAtaqueActual();
 
-    Proyectil *bola = new Proyectil(scene, ataque.sprite, posicionInicial);
+    Proyectil *bola = new Proyectil(scene, ataque.spriteProyectil, posicionInicial);
     bola->configurarAtaque(ataque.velocidad, ataque.dano);
     return bola;
 }

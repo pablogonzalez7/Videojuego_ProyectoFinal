@@ -13,7 +13,15 @@
         <file>images/sprites/vegitoBateo.png</file>
         <file>images/sprites/transformacion_vegito.png</file>
         <file>images/sprites/vegito_bateo_kaioken.png</file>
+        <file>images/sprites/gogeta_izquierda.png</file>
+        <file>images/sprites/gogeta_derecha.png</file>
         <file>images/sprites/freezerPitcher.png</file>
+        <file>images/sprites/freezerPitcher2.png</file>
+        <file>images/sprites/freezerPitcher3.png</file>
         <file>images/sprites/bolaFreezer.png</file>
+        <file>images/sprites/bolaFreezer2.png</file>
+        <file>images/sprites/bolafreezer3.png</file>
+        <file>images/sprites/vegito_impacto.png</file>
+        <file>images/sprites/freezer_impacto.png</file>
     </qresource>
 </RCC>

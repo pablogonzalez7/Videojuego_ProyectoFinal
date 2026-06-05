@@ -25,7 +25,8 @@ public:
     enum TipoAnimacion {
         SinAnimacion,
         AnimacionAtaque,
-        AnimacionTransformacion
+        AnimacionTransformacion,
+        AnimacionImpacto
     };
 
     Personaje(const QString &rutaQuieto,
@@ -38,10 +39,8 @@ public:
 
     virtual ~Personaje();
 
-    void configurarSpritesEuforia(const QString &rutaTransformacion,
-                                  int framesTransformacion,
-                                  const QString &rutaAtaqueKaioken,
-                                  int framesAtaqueKaioken);
+    void configurarSpritesEuforia(const QString &rutaTransformacion,int framesTransformacion,const QString &rutaAtaqueKaioken,int framesAtaqueKaioken);
+    void configurarSpriteImpacto(const QString &rutaImpacto, int framesImpacto);
 
     void agregarAEscena(QGraphicsScene *scene);
     Sprite *getSprite() const;
@@ -51,6 +50,7 @@ public:
 
     virtual void actualizar(int dtMs);
     virtual void reproducirAtaque();
+    virtual void reproducirImpacto();
     virtual void activarEuforia();
 
     bool estaEnEuforia() const;
@@ -71,12 +71,14 @@ protected:
     DatosSprite spriteAtaqueNormal;
     DatosSprite spriteTransformacion;
     DatosSprite spriteAtaqueKaioken;
+    DatosSprite spriteImpacto;
 
     qreal posicionX;
     qreal posicionY;
 
     int tiempoPorFrameMs;
     int tiempoAcumuladoMs;
+    int tiempoRetencionAnimacionMs;
     bool euforiaDisponible;
     bool tieneSpritesEuforia;
     TipoAnimacion animacionActual;

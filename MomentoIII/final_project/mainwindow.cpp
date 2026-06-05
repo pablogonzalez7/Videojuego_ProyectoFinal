@@ -24,10 +24,13 @@ MainWindow::MainWindow(QWidget *parent)
     , labelReglasTexto(nullptr)
     , botonNivel1(nullptr)
     , botonNivel2(nullptr)
+    , botonNivel2Facil(nullptr)
+    , botonNivel2Dificil(nullptr)
     , labelNivel2Titulo(nullptr)
     , labelNivel2Texto(nullptr)
     , vegito(nullptr)
     , freezer(nullptr)
+    , gogeta(nullptr)
     , fondoVidaVegito(nullptr)
     , rellenoVidaVegito(nullptr)
     , bordeVidaVegito(nullptr)
@@ -66,7 +69,11 @@ MainWindow::MainWindow(QWidget *parent)
     bolasPendientesPorLanzar = 0;
     esperandoLanzamientos = false;
     nivel1Activo = false;
+    nivel2Activo = false;
     puedeBatear = true;
+    rutaSpriteGogetaActual = "";
+    posicionGogetaX = 650;
+    posicionGogetaY = 585;
     anchoBarraVida = 280;
     altoBarraVida = 24;
 
@@ -118,6 +125,7 @@ MainWindow::~MainWindow()
         delete obstaculos.takeLast();
     }
 
+    delete gogeta;
     delete vegito;
     delete freezer;
     delete ui;
@@ -153,6 +161,7 @@ void MainWindow::ponerFondo(QString ruta, float opacity)
 void MainWindow::mostrarMenuInicio()
 {
     ocultarElementosNivel1();
+    ocultarElementosNivel2();
     ponerFondo(":/images/backgrounds/background_main.jpg");
     iniciarAudioInicio();
 }
@@ -178,9 +187,11 @@ void MainWindow::iniciarModoDificil()
 
 void MainWindow::abrirNivel1DesdeSelector()
 {
+    nivel2Activo = false;
     ponerFondo(":/images/backgrounds/background_main.jpg");
     ui->labelTitulo->show();
     ocultarPantallaNivel2();
+    ocultarElementosNivel2();
     ui->botonInicio->hide();
     mostrarPantallaReglas();
 }
@@ -190,29 +201,69 @@ void MainWindow::abrirNivel2DesdeSelector()
     mostrarPantallaNivel2();
 }
 
-void MainWindow::iniciarNivel1()
+void MainWindow::iniciarNivel2Facil()
 {
     detenerAudioInicio();
+    nivel1Activo = false;
+    nivel2Activo = true;
+
+    if (timerNivel1 != nullptr) {
+        timerNivel1->stop();
+    }
+
     ui->labelTitulo->hide();
     ocultarPantallaReglas();
     ocultarOpcionesDificultad();
     ocultarPantallaNivel2();
+    ocultarElementosNivel1();
+
+    ponerFondo(":/images/backgrounds/nivel2.png", 1.0);
+
+    if (gogeta == nullptr) {
+        gogeta = new Sprite(":/images/sprites/gogeta_derecha.png", 3);
+        scene->addItem(gogeta);
+        gogeta->setZValue(8);
+    }
+    else if (gogeta->scene() != scene) {
+        scene->addItem(gogeta);
+    }
+
+    posicionGogetaX = scene->sceneRect().width() / 2.0;
+    posicionGogetaY = scene->sceneRect().height() - 135;
+    rutaSpriteGogetaActual = ":/images/sprites/gogeta_derecha.png";
+    gogeta->cambiarSprite(rutaSpriteGogetaActual, 3);
+    gogeta->reiniciarAnimacion();
+    gogeta->setPos(posicionGogetaX, posicionGogetaY);
+    gogeta->setVisible(true);
+}
+
+void MainWindow::iniciarNivel2Dificil()
+{
+    if (labelNivel2Texto != nullptr) {
+        labelNivel2Texto->setText(
+            "Nivel 2 dificil aun no esta implementado.\n"
+            "Por ahora puedes entrar al modo facil y mover a Gogeta con A y D."
+            );
+    }
+}
+
+void MainWindow::iniciarNivel1()
+{
+    detenerAudioInicio();
+    nivel2Activo = false;
+    ui->labelTitulo->hide();
+    ocultarPantallaReglas();
+    ocultarOpcionesDificultad();
+    ocultarPantallaNivel2();
+    ocultarElementosNivel2();
 
     ponerFondo(":/images/backgrounds/nivel1.png", 1.0);
 
     if (vegito == nullptr) {
-        vegito = new Jugador(":/images/sprites/vegitoBateoQuieto.png",
-                             1,
-                             ":/images/sprites/vegitoBateo.png",
-                             5,
-                             650,
-                             540,
-                             20.0f);
+        vegito = new Jugador(":/images/sprites/vegitoBateoQuieto.png",1,":/images/sprites/vegitoBateo.png",5,650,540,20.0f);
 
-        vegito->configurarSpritesEuforia(":/images/sprites/transformacion_vegito.png",
-                                         4,
-                                         ":/images/sprites/vegito_bateo_kaioken.png",
-                                         5);
+        vegito->configurarSpritesEuforia(":/images/sprites/transformacion_vegito.png",4,":/images/sprites/vegito_bateo_kaioken.png",5);
+        vegito->configurarSpriteImpacto(":/images/sprites/vegito_impacto.png", 1);
     }
 
     vegito->agregarAEscena(scene);
@@ -220,13 +271,8 @@ void MainWindow::iniciarNivel1()
     vegito->setPos(650, 540);
 
     if (freezer == nullptr) {
-        freezer = new Villano(":/images/sprites/freezerPitcher.png",
-                              6,
-                              ":/images/sprites/freezerPitcher.png",
-                              6,
-                              650,
-                              270,
-                              100.0f);
+        freezer = new Villano(":/images/sprites/freezerPitcher.png",6,":/images/sprites/freezerPitcher.png",6,650,270,100.0f);
+        freezer->configurarSpriteImpacto(":/images/sprites/freezer_impacto.png", 1);
     }
 
     freezer->agregarAEscena(scene);
@@ -289,23 +335,9 @@ void MainWindow::crearHUDNivel1()
 {
     destruirHUDVida();
 
-    crearBarraVida(fondoVidaVegito,
-                   rellenoVidaVegito,
-                   bordeVidaVegito,
-                   textoVidaVegito,
-                   20,
-                   48,
-                   "Vegito",
-                   QColor(30, 160, 255));
+    crearBarraVida(fondoVidaVegito,rellenoVidaVegito,bordeVidaVegito,textoVidaVegito,20,48,"Vegito",QColor(30, 160, 255));
 
-    crearBarraVida(fondoVidaFreezer,
-                   rellenoVidaFreezer,
-                   bordeVidaFreezer,
-                   textoVidaFreezer,
-                   20,
-                   108,
-                   "Freezer",
-                   QColor(220, 40, 40));
+    crearBarraVida(fondoVidaFreezer,rellenoVidaFreezer,bordeVidaFreezer,textoVidaFreezer,20,108,"Freezer",QColor(220, 40, 40));
 
     textoEstadoKaioken = scene->addText("");
     textoEstadoKaioken->setDefaultTextColor(QColor(255, 210, 80));
@@ -315,39 +347,17 @@ void MainWindow::crearHUDNivel1()
 }
 
 
-void MainWindow::crearBarraVida(QGraphicsRectItem *&fondoBarra,
-                                QGraphicsRectItem *&rellenoBarra,
-                                QGraphicsRectItem *&bordeBarra,
-                                QGraphicsTextItem *&textoBarra,
-                                qreal x,
-                                qreal y,
-                                const QString &etiqueta,
-                                const QColor &colorRelleno)
+void MainWindow::crearBarraVida(QGraphicsRectItem *&fondoBarra,QGraphicsRectItem *&rellenoBarra,QGraphicsRectItem *&bordeBarra,QGraphicsTextItem *&textoBarra,qreal x,qreal y,const QString &etiqueta,const QColor &colorRelleno)
 {
     if (scene == nullptr) {
         return;
     }
 
-    fondoBarra = scene->addRect(x,
-                                y,
-                                anchoBarraVida,
-                                altoBarraVida,
-                                QPen(Qt::black, 2),
-                                QBrush(QColor(35, 35, 35, 190)));
+    fondoBarra = scene->addRect(x,y,anchoBarraVida,altoBarraVida,QPen(Qt::black, 2),QBrush(QColor(35, 35, 35, 190)));
 
-    rellenoBarra = scene->addRect(x + 2,
-                                  y + 2,
-                                  anchoBarraVida - 4,
-                                  altoBarraVida - 4,
-                                  QPen(Qt::NoPen),
-                                  QBrush(colorRelleno));
+    rellenoBarra = scene->addRect(x + 2,y + 2,anchoBarraVida - 4,altoBarraVida - 4,QPen(Qt::NoPen),QBrush(colorRelleno));
 
-    bordeBarra = scene->addRect(x,
-                                y,
-                                anchoBarraVida,
-                                altoBarraVida,
-                                QPen(Qt::white, 2),
-                                QBrush(Qt::NoBrush));
+    bordeBarra = scene->addRect(x,y,anchoBarraVida,altoBarraVida,QPen(Qt::white, 2),QBrush(Qt::NoBrush));
 
     textoBarra = scene->addText(etiqueta);
     textoBarra->setDefaultTextColor(Qt::white);
@@ -360,13 +370,7 @@ void MainWindow::crearBarraVida(QGraphicsRectItem *&fondoBarra,
     textoBarra->setZValue(23);
 }
 
-void MainWindow::actualizarBarraVida(QGraphicsRectItem *rellenoBarra,
-                                     QGraphicsTextItem *textoBarra,
-                                     qreal x,
-                                     qreal y,
-                                     const QString &etiqueta,
-                                     float vidaActual,
-                                     float vidaMaxima)
+void MainWindow::actualizarBarraVida(QGraphicsRectItem *rellenoBarra,QGraphicsTextItem *textoBarra,qreal x,qreal y,const QString &etiqueta,float vidaActual,float vidaMaxima)
 {
     if (rellenoBarra == nullptr || textoBarra == nullptr) {
         return;
@@ -387,16 +391,9 @@ void MainWindow::actualizarBarraVida(QGraphicsRectItem *rellenoBarra,
     }
 
     qreal anchoRelleno = (anchoBarraVida - 4) * vidaNormalizada;
-    rellenoBarra->setRect(x + 2,
-                          y + 2,
-                          anchoRelleno,
-                          altoBarraVida - 4);
+    rellenoBarra->setRect(x + 2,y + 2,anchoRelleno,altoBarraVida - 4);
 
-    textoBarra->setPlainText(etiqueta +
-                             ": " +
-                             QString::number(vidaActual, 'f', 1) +
-                             " / " +
-                             QString::number(vidaMaxima, 'f', 1));
+    textoBarra->setPlainText(etiqueta +": " +QString::number(vidaActual, 'f', 1) +" / " +QString::number(vidaMaxima, 'f', 1));
 }
 
 void MainWindow::setVisibleHUDVida(bool visible)
@@ -449,22 +446,13 @@ void MainWindow::configurarZonasBateo()
     // Se usan trapecios porque encajan mejor con la perspectiva del fondo
     // que los rectángulos originales y son mucho más simples de mantener.
     QPolygonF zonaBaja;
-    zonaBaja << QPointF(345, 455)
-             << QPointF(914, 455)
-             << QPointF(805, 300)
-             << QPointF(455, 300);
+    zonaBaja << QPointF(345, 455)<< QPointF(914, 455)<< QPointF(805, 300)<< QPointF(455, 300);
 
     QPolygonF zonaMedia;
-    zonaMedia << QPointF(305, 345)
-              << QPointF(955, 345)
-              << QPointF(855, 208)
-              << QPointF(405, 208);
+    zonaMedia << QPointF(305, 345)<< QPointF(955, 345)<< QPointF(855, 208)<< QPointF(405, 208);
 
     QPolygonF zonaAlta;
-    zonaAlta << QPointF(255, 298)
-             << QPointF(1005, 298)
-             << QPointF(904, 112)
-             << QPointF(355, 112);
+    zonaAlta << QPointF(255, 298)<< QPointF(1005, 298)<< QPointF(904, 112)<< QPointF(355, 112);
 
     zonaDanioBajo.addPolygon(zonaBaja);
     zonaDanioMedio.addPolygon(zonaMedia);
@@ -566,9 +554,11 @@ void MainWindow::crearTextosReglas()
 
 void MainWindow::crearPantallaNivel2()
 {
-    botonNivel1 = new QPushButton("Nivel 1", ui->centralwidget);
-    botonNivel2 = new QPushButton("Nivel 2", ui->centralwidget);
-    labelNivel2Titulo = new QLabel("Transicion al Nivel 2", ui->centralwidget);
+    botonNivel1 = new QPushButton("Volver a Nivel 1", ui->centralwidget);
+    botonNivel2 = new QPushButton("Volver al menu Nivel 2", ui->centralwidget);
+    botonNivel2Facil = new QPushButton("Facil", ui->centralwidget);
+    botonNivel2Dificil = new QPushButton("Dificil", ui->centralwidget);
+    labelNivel2Titulo = new QLabel("Nivel 2: Seleccion de dificultad", ui->centralwidget);
     labelNivel2Texto = new QLabel(ui->centralwidget);
 
     botonNivel1->setStyleSheet(
@@ -584,6 +574,26 @@ void MainWindow::crearPantallaNivel2()
     botonNivel2->setStyleSheet(
         "QPushButton {"
         "background-color: rgba(170, 90, 20, 220);"
+        "color: white;"
+        "font-weight: bold;"
+        "border: 2px solid white;"
+        "border-radius: 10px;"
+        "}"
+        );
+
+    botonNivel2Facil->setStyleSheet(
+        "QPushButton {"
+        "background-color: rgba(30, 135, 65, 220);"
+        "color: white;"
+        "font-weight: bold;"
+        "border: 2px solid white;"
+        "border-radius: 10px;"
+        "}"
+        );
+
+    botonNivel2Dificil->setStyleSheet(
+        "QPushButton {"
+        "background-color: rgba(150, 40, 40, 220);"
         "color: white;"
         "font-weight: bold;"
         "border: 2px solid white;"
@@ -620,14 +630,18 @@ void MainWindow::crearPantallaNivel2()
         );
 
     labelNivel2Texto->setText(
-        "Llegaste a la transicion del Nivel 2.\n"
-        "Aqui queda el espacio para mostrar las instrucciones de esta fase.\n"
-        "Desde estos botones puedes volver al Nivel 1 o dejar listo el Nivel 2.\n"
-        "Cuando quieras, luego se puede conectar la jugabilidad real de este nivel."
+        "Escoge la dificultad del Nivel 2.\n"
+        "Por ahora el modo facil ya permite controlar a Gogeta.\n"
+        "Controles del modo facil:\n"
+        "-> A mueve a Gogeta hacia la izquierda.\n"
+        "-> D mueve a Gogeta hacia la derecha.\n"
+        "El modo dificil queda visible en la interfaz, pero aun no esta implementado."
         );
 
     connect(botonNivel1, &QPushButton::clicked, this, &MainWindow::abrirNivel1DesdeSelector);
     connect(botonNivel2, &QPushButton::clicked, this, &MainWindow::abrirNivel2DesdeSelector);
+    connect(botonNivel2Facil, &QPushButton::clicked, this, &MainWindow::iniciarNivel2Facil);
+    connect(botonNivel2Dificil, &QPushButton::clicked, this, &MainWindow::iniciarNivel2Dificil);
 }
 
 void MainWindow::iniciarAudioInicio()
@@ -777,11 +791,25 @@ void MainWindow::ocultarPantallaReglas()
 void MainWindow::mostrarPantallaNivel2()
 {
     detenerAudioInicio();
+    nivel1Activo = false;
+    nivel2Activo = false;
     ponerFondo(":/images/backgrounds/nivel2.png", 1.0);
     ui->labelTitulo->hide();
     ocultarPantallaReglas();
     ocultarOpcionesDificultad();
     ocultarElementosNivel1();
+    ocultarElementosNivel2();
+
+    if (labelNivel2Texto != nullptr) {
+        labelNivel2Texto->setText(
+            "Escoge la dificultad del Nivel 2.\n"
+            "Por ahora el modo facil ya permite controlar a Gogeta.\n"
+            "Controles del modo facil:\n"
+            "-> A mueve a Gogeta hacia la izquierda.\n"
+            "-> D mueve a Gogeta hacia la derecha.\n"
+            "El modo dificil queda visible en la interfaz, pero aun no esta implementado."
+            );
+    }
 
     if (labelNivel2Titulo != nullptr) {
         labelNivel2Titulo->show();
@@ -797,6 +825,14 @@ void MainWindow::mostrarPantallaNivel2()
 
     if (botonNivel2 != nullptr) {
         botonNivel2->show();
+    }
+
+    if (botonNivel2Facil != nullptr) {
+        botonNivel2Facil->show();
+    }
+
+    if (botonNivel2Dificil != nullptr) {
+        botonNivel2Dificil->show();
     }
 }
 
@@ -816,6 +852,14 @@ void MainWindow::ocultarPantallaNivel2()
 
     if (botonNivel2 != nullptr) {
         botonNivel2->hide();
+    }
+
+    if (botonNivel2Facil != nullptr) {
+        botonNivel2Facil->hide();
+    }
+
+    if (botonNivel2Dificil != nullptr) {
+        botonNivel2Dificil->hide();
     }
 }
 
@@ -840,16 +884,39 @@ void MainWindow::ocultarElementosNivel1()
     }
 }
 
+void MainWindow::ocultarElementosNivel2()
+{
+    if (gogeta != nullptr) {
+        gogeta->setVisible(false);
+    }
+}
+
 void MainWindow::configurarAtaquesFreezer()
 {
     ataquesFreezer.clear();
-    ataquesFreezer.append({3.6f, 1.0f, ":/images/sprites/bolaFreezer.png"});
+    ataquesFreezer.append({3.6f,
+                           1.0f,
+                           ":/images/sprites/bolaFreezer.png",
+                           ":/images/sprites/freezerPitcher.png",
+                           6});
 
     if (dificultadSeleccionada == Dificil) {
         ataquesFreezer.clear();
-        ataquesFreezer.append({3.6f, 1.0f, ":/images/sprites/bolaFreezer.png"});
-        ataquesFreezer.append({4.3f, 1.5f, ":/images/sprites/bolaFreezer.png"});
-        ataquesFreezer.append({5.0f, 2.0f, ":/images/sprites/bolaFreezer.png"});
+        ataquesFreezer.append({3.6f,
+                               1.0f,
+                               ":/images/sprites/bolaFreezer.png",
+                               ":/images/sprites/freezerPitcher.png",
+                               6});
+        ataquesFreezer.append({4.3f,
+                               1.5f,
+                               ":/images/sprites/bolaFreezer2.png",
+                               ":/images/sprites/freezerPitcher2.png",
+                               5});
+        ataquesFreezer.append({5.0f,
+                               2.0f,
+                               ":/images/sprites/bolafreezer3.png",
+                               ":/images/sprites/freezerPitcher3.png",
+                               3});
     }
 
     if (freezer != nullptr) {
@@ -860,7 +927,11 @@ void MainWindow::configurarAtaquesFreezer()
 Villano::Ataque MainWindow::obtenerAtaqueActual() const
 {
     if (ataquesFreezer.isEmpty()) {
-        return {3.6f, 1.0f, ":/images/sprites/bolaFreezer.png"};
+        return {3.6f,
+                1.0f,
+                ":/images/sprites/bolaFreezer.png",
+                ":/images/sprites/freezerPitcher.png",
+                6};
     }
 
     if (dificultadSeleccionada == Facil) {
@@ -877,10 +948,10 @@ Proyectil *MainWindow::obtenerBolaDisponible(const Villano::Ataque &ataque, QPoi
 
     if (!bolasDisponibles.isEmpty()) {
         bola = bolasDisponibles.takeLast();
-        bola->reiniciar(posicionInicial, ataque.sprite);
+        bola->reiniciar(posicionInicial, ataque.spriteProyectil);
     }
     else {
-        bola = new Proyectil(scene, ataque.sprite, posicionInicial);
+        bola = new Proyectil(scene, ataque.spriteProyectil, posicionInicial);
     }
 
     bola->configurarAtaque(ataque.velocidad, ataque.dano);
@@ -917,22 +988,26 @@ void MainWindow::lanzarBolaFreezer()
         return;
     }
 
-    freezer->reproducirAtaque();
-
-    QPointF posicionInicial = freezer->getSprite()->sceneBoundingRect().center();
-    posicionInicial.setY(posicionInicial.y() + 45);
-
-    Villano::Ataque ataque = obtenerAtaqueActual();
-    Proyectil *nuevaBola = obtenerBolaDisponible(ataque, posicionInicial);
-
-    bolasFreezer.append(nuevaBola);
-    bolaFreezer = nuevaBola;
-
+    Villano::Ataque ataque = freezer->elegirAtaque();
+    freezer->reproducirAtaqueActual();
     bolasPendientesPorLanzar--;
 
     if (bolasPendientesPorLanzar <= 0) {
         esperandoLanzamientos = false;
     }
+
+    QTimer::singleShot(220, this, [this, ataque]() {
+        if (!nivel1Activo || scene == nullptr || freezer == nullptr) {
+            return;
+        }
+
+        QPointF posicionInicial = freezer->getSprite()->sceneBoundingRect().center();
+        posicionInicial.setY(posicionInicial.y() + 45);
+
+        Proyectil *nuevaBola = obtenerBolaDisponible(ataque, posicionInicial);
+        bolasFreezer.append(nuevaBola);
+        bolaFreezer = nuevaBola;
+    });
 }
 
 void MainWindow::actualizarNivel1()
@@ -967,6 +1042,7 @@ void MainWindow::actualizarNivel1()
 
             if (bola->pasoLinea(vegito->getSprite()->y() + 70)) {
                 vegito->recibirDanio(bola->getDanoAtaque());
+                vegito->reproducirImpacto();
                 freezer->percibir(false);
                 freezer->aprender(false);
                 rachaDanio = 0.0f;
@@ -1015,10 +1091,12 @@ void MainWindow::revisarCaidaBola(Proyectil *bola)
 
     if (danoFreezer > 0.0f) {
         freezer->recibirDanio(danoFreezer);
+        freezer->reproducirImpacto();
         rachaDanio += danoFreezer;
     }
     else {
         vegito->recibirDanio(0.5f);
+        vegito->reproducirImpacto();
         rachaDanio = 0.0f;
     }
 
@@ -1226,6 +1304,18 @@ QPointF MainWindow::destinoAleatorioBateo()
 
 void MainWindow::keyPressEvent(QKeyEvent *e)
 {
+    if (nivel2Activo) {
+        if (e->key() == Qt::Key_A) {
+            moverGogeta(-28, ":/images/sprites/gogeta_izquierda.png");
+            return;
+        }
+
+        if (e->key() == Qt::Key_D) {
+            moverGogeta(28, ":/images/sprites/gogeta_derecha.png");
+            return;
+        }
+    }
+
     if (e->key() == Qt::Key_P &&
         vegito != nullptr &&
         freezer != nullptr &&
@@ -1256,6 +1346,7 @@ void MainWindow::keyPressEvent(QKeyEvent *e)
 
                 if (vegito->estaEnEuforia()) {
                     freezer->recibirDanio(8.0f);
+                    freezer->reproducirImpacto();
                     rachaDanio += 8.0f;
                     actualizarDificultad();
                     actualizarHUD();
@@ -1283,6 +1374,37 @@ void MainWindow::keyPressEvent(QKeyEvent *e)
 
         vegito->controlarProyectil(bolaControlada, e->key());
     }
+}
+
+void MainWindow::moverGogeta(qreal deltaX, const QString &rutaSprite)
+{
+    if (!nivel2Activo || gogeta == nullptr || scene == nullptr) {
+        return;
+    }
+
+    if (rutaSpriteGogetaActual != rutaSprite) {
+        rutaSpriteGogetaActual = rutaSprite;
+        gogeta->cambiarSprite(rutaSpriteGogetaActual, 3);
+        gogeta->reiniciarAnimacion();
+    }
+    else if (gogeta->getFrameActual() < gogeta->getTotalFrames() - 1) {
+        gogeta->avanzarFrame();
+    }
+
+    qreal nuevaX = posicionGogetaX + deltaX;
+    const qreal limiteIzquierdo = 70;
+    const qreal limiteDerecho = scene->sceneRect().width() - 70;
+
+    if (nuevaX < limiteIzquierdo) {
+        nuevaX = limiteIzquierdo;
+    }
+
+    if (nuevaX > limiteDerecho) {
+        nuevaX = limiteDerecho;
+    }
+
+    posicionGogetaX = nuevaX;
+    gogeta->setPos(posicionGogetaX, posicionGogetaY);
 }
 
 void MainWindow::ajustarFondo()
@@ -1335,11 +1457,24 @@ void MainWindow::resizeEvent(QResizeEvent *event)
     }
 
     if (botonNivel1 != nullptr) {
-        botonNivel1->setGeometry(width() / 2 - 150, height() * 3 / 4, 120, 45);
+        botonNivel1->setGeometry(width() / 2 - 250, height() * 3 / 4, 160, 45);
     }
 
     if (botonNivel2 != nullptr) {
-        botonNivel2->setGeometry(width() / 2 + 30, height() * 3 / 4, 120, 45);
+        botonNivel2->setGeometry(width() / 2 + 90, height() * 3 / 4, 170, 45);
+    }
+
+    if (botonNivel2Facil != nullptr) {
+        botonNivel2Facil->setGeometry(width() / 2 - 90, height() * 3 / 4, 80, 45);
+    }
+
+    if (botonNivel2Dificil != nullptr) {
+        botonNivel2Dificil->setGeometry(width() / 2 + 20, height() * 3 / 4, 80, 45);
+    }
+
+    if (nivel2Activo && gogeta != nullptr) {
+        posicionGogetaY = scene->sceneRect().height() - 135;
+        gogeta->setPos(posicionGogetaX, posicionGogetaY);
     }
 
     ajustarFondo();

@@ -37,4 +37,5 @@ RESOURCES += \
     pictures.qrc
 
 DISTFILES += \
-    images/backgrounds/botonInicio.png
+    images/backgrounds/botonInicio.png \
+    images/sprites/bolafreezer3.png

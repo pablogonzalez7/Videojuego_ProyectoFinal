@@ -2,20 +2,8 @@
 
 #include <QKeyEvent>
 
-Jugador::Jugador(const QString &rutaQuieto,
-                 int framesQuieto,
-                 const QString &rutaAtaque,
-                 int framesAtaque,
-                 qreal posX,
-                 qreal posY,
-                 float vidaMaxima)
-    : Personaje(rutaQuieto,
-                framesQuieto,
-                rutaAtaque,
-                framesAtaque,
-                posX,
-                posY,
-                vidaMaxima)
+Jugador::Jugador(const QString &rutaQuieto,int framesQuieto,const QString &rutaAtaque,int framesAtaque,qreal posX,qreal posY,float vidaMaxima)
+    : Personaje(rutaQuieto,framesQuieto,rutaAtaque,framesAtaque,posX,posY,vidaMaxima)
 {
     bolaControlada = nullptr;
     fuerzaBateo = 1.0f;
@@ -28,8 +16,7 @@ bool Jugador::bolaEnZonaBateo(Proyectil *bola) const
         return false;
     }
 
-    return spritePersonaje->collidesWithItem(bola->getItem(),
-                                             Qt::IntersectsItemBoundingRect);
+    return spritePersonaje->collidesWithItem(bola->getItem(),Qt::IntersectsItemBoundingRect);
 }
 
 bool Jugador::batear(Proyectil *bola, const QPointF &destino)
@@ -59,16 +46,16 @@ void Jugador::controlarProyectil(Proyectil *bola, int tecla)
     }
 
     if (tecla == Qt::Key_A) {
-        bola->ajustarDestino(-45, 0);
+        bola->ajustarDestino(-25, 0);
     }
     else if (tecla == Qt::Key_D) {
-        bola->ajustarDestino(45, 0);
+        bola->ajustarDestino(25, 0);
     }
     else if (tecla == Qt::Key_W) {
-        bola->ajustarDestino(0, -45);
+        bola->ajustarDestino(0, -25);
     }
     else if (tecla == Qt::Key_S) {
-        bola->ajustarDestino(0, 45);
+        bola->ajustarDestino(0, 25);
     }
 }
 

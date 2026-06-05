@@ -38,6 +38,7 @@ public:
     bool avanzarFrame();
 
     int getTotalFrames() const;
+    int getFrameActual() const;
 
     QRectF boundingRect() const override;
     void paint(QPainter *painter,

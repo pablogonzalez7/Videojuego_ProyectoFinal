@@ -17,13 +17,7 @@
 class Jugador : public Personaje
 {
 public:
-    Jugador(const QString &rutaQuieto,
-            int framesQuieto,
-            const QString &rutaAtaque,
-            int framesAtaque,
-            qreal posX,
-            qreal posY,
-            float vidaMaxima);
+    Jugador(const QString &rutaQuieto,int framesQuieto,const QString &rutaAtaque,int framesAtaque,qreal posX,qreal posY,float vidaMaxima);
 
     bool bolaEnZonaBateo(Proyectil *bola) const;
     bool batear(Proyectil *bola, const QPointF &destino);

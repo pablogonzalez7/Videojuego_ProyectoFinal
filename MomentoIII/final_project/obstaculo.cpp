@@ -2,10 +2,7 @@
 
 #include <QtMath>
 
-Obstaculo::Obstaculo(QGraphicsScene *scene,
-                     const QString &rutaImagen,
-                     QPointF posicion,
-                     TipoMovimiento tipoMovimiento)
+Obstaculo::Obstaculo(QGraphicsScene *scene,const QString &rutaImagen,QPointF posicion,TipoMovimiento tipoMovimiento)
 {
     posicionInicial = posicion;
     tipo = rutaImagen;

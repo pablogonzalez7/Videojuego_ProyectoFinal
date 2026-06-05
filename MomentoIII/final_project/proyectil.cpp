@@ -3,9 +3,7 @@
 #include <QtMath>
 #include <QRandomGenerator>
 
-Proyectil::Proyectil(QGraphicsScene *scene,
-                     const QString &rutaImagen,
-                     QPointF posicionInicial)
+Proyectil::Proyectil(QGraphicsScene *scene,const QString &rutaImagen,QPointF posicionInicial)
 {
     rutaSprite = rutaImagen;
 
@@ -33,8 +31,7 @@ Proyectil::Proyectil(QGraphicsScene *scene,
 
         Esto hace que las colisiones y la revisión de zonas sean más coherentes.
     */
-    proyectil->setOffset(-pixmap.width() / 2.0,
-                         -pixmap.height() / 2.0);
+    proyectil->setOffset(-pixmap.width() / 2.0,-pixmap.height() / 2.0);
 
     proyectil->setPos(posicionInicial);
     proyectil->setZValue(5);
@@ -57,7 +54,7 @@ Proyectil::Proyectil(QGraphicsScene *scene,
         La bola tarda 3 segundos desde que Vegito la batea
         hasta que cae en el campo.
     */
-    duracionVuelo = 3.0;
+    duracionVuelo = 1.0;
 
     inicioX = posicionInicial.x();
     inicioY = posicionInicial.y();
@@ -206,13 +203,10 @@ void Proyectil::reiniciar(QPointF posicionInicial, const QString &rutaImagen)
     rutaSprite = rutaImagen;
 
     QPixmap pixmap(rutaSprite);
-    pixmap = pixmap.scaled(35, 35,
-                           Qt::KeepAspectRatio,
-                           Qt::SmoothTransformation);
+    pixmap = pixmap.scaled(35, 35,Qt::KeepAspectRatio,Qt::SmoothTransformation);
 
     proyectil->setPixmap(pixmap);
-    proyectil->setOffset(-pixmap.width() / 2.0,
-                         -pixmap.height() / 2.0);
+    proyectil->setOffset(-pixmap.width() / 2.0,-pixmap.height() / 2.0);
     proyectil->setTransformOriginPoint(proyectil->boundingRect().center());
     proyectil->setPos(posicionInicial);
     proyectil->setScale(1.0);
@@ -259,12 +253,6 @@ void Proyectil::configurarAtaque(float velocidad, float dano)
 
 void Proyectil::actualizarBateo(float dt)
 {
-    /*
-        Esta función mueve la bola después del batazo.
-
-        La bola se desplaza hacia su destino y cambia de tamaño
-        para simular una trayectoria elevada en vista cenital.
-    */
     if (estado != BateadaPorVegito) {
         return;
     }
@@ -284,19 +272,6 @@ void Proyectil::actualizarBateo(float dt)
     qreal nuevaX = inicioX + (destinoX - inicioX) * t;
     qreal nuevaY = inicioY + (destinoY - inicioY) * t;
 
-    /*
-        Escala visual de la bola.
-
-        Antes estaba terminando demasiado pequeña y eso hacía que visualmente
-        pareciera caer en una zona distinta a la que realmente contaba.
-
-        Ahora:
-        - al inicio del batazo: escala = 1.0
-        - en la mitad del vuelo: escala aumenta
-        - al caer: escala termina en 0.90
-
-        Así la bola cae casi del mismo tamaño con el que salió de Freezer.
-    */
     qreal escala = 1.0 + 0.75 * qSin(3.1416 * t) - 0.10 * t;
 
     /*

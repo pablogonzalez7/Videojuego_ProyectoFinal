@@ -58,9 +58,7 @@ public:
         - rutaImagen: ruta del sprite de la bola.
         - posicionInicial: punto donde aparece la bola.
     */
-    Proyectil(QGraphicsScene *scene,
-              const QString &rutaImagen,
-              QPointF posicionInicial = QPointF(650, 270));
+    Proyectil(QGraphicsScene *scene,const QString &rutaImagen,QPointF posicionInicial = QPointF(650, 270));
 
     /*
         Destructor.
