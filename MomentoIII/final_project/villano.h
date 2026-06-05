@@ -3,7 +3,9 @@
 
 #include <QList>
 #include <QPointF>
+#include <QRectF>
 #include <QString>
+#include <QVector>
 
 #include "personaje.h"
 #include "proyectil.h"
@@ -24,6 +26,7 @@ public:
         QString spriteProyectil;
         QString spriteLanzamiento;
         int framesLanzamiento;
+        QVector<QRectF> framesRecorteLanzamiento;
     };
 
     Villano(const QString &rutaQuieto,int framesQuieto,const QString &rutaAtaque,int framesAtaque,qreal posX,qreal posY,float vidaMaxima);
@@ -33,9 +36,12 @@ public:
     void reproducirAtaqueActual();
 
     void percibir(bool aciertoJugador);
+    void percibirPosicionJugador(const QPointF &posicionJugador);
     short razonar();
+    QPointF razonarDestinoLejano(const QRectF &limitesEscena) const;
     Proyectil *actuar(QGraphicsScene *scene, QPointF posicionInicial);
     void aprender(bool aciertoJugador);
+    void aprenderTrayectoria(bool impactoJugador);
 
     float getVelocidadAtaque() const;
     short getTipoAtaqueActual() const;
@@ -45,8 +51,10 @@ private:
     QList<int> aciertosPorAtaque;
     QList<int> fallosPorAtaque;
     bool ultimoAciertoJugador;
+    QPointF ultimaPosicionJugador;
     short tipoAtaqueActual;
     float velocidadAtaque;
+    int sesgoCentro;
 };
 
 #endif // VILLANO_H
