@@ -7,19 +7,23 @@ CONFIG += c++17
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += \
-    barravida.cpp \
+    jugador.cpp \
     main.cpp \
     mainwindow.cpp \
+    obstaculo.cpp \
     personaje.cpp \
     proyectil.cpp \
-    sprite.cpp
+    sprite.cpp \
+    villano.cpp
 
 HEADERS += \
-    barravida.h \
+    jugador.h \
     mainwindow.h \
+    obstaculo.h \
     personaje.h \
     proyectil.h \
-    sprite.h
+    sprite.h \
+    villano.h
 
 FORMS += \
     mainwindow.ui

@@ -28,6 +28,14 @@ MainWindow::MainWindow(QWidget *parent)
     , labelNivel2Texto(nullptr)
     , vegito(nullptr)
     , freezer(nullptr)
+    , fondoVidaVegito(nullptr)
+    , rellenoVidaVegito(nullptr)
+    , bordeVidaVegito(nullptr)
+    , textoVidaVegito(nullptr)
+    , fondoVidaFreezer(nullptr)
+    , rellenoVidaFreezer(nullptr)
+    , bordeVidaFreezer(nullptr)
+    , textoVidaFreezer(nullptr)
     , textoEstadoKaioken(nullptr)
     , bolaFreezer(nullptr)
     , bolaControlada(nullptr)
@@ -59,6 +67,8 @@ MainWindow::MainWindow(QWidget *parent)
     esperandoLanzamientos = false;
     nivel1Activo = false;
     puedeBatear = true;
+    anchoBarraVida = 280;
+    altoBarraVida = 24;
 
     scene = new QGraphicsScene(this);
     ui->graphicsView->setScene(scene);
@@ -102,8 +112,11 @@ MainWindow::~MainWindow()
         delete bolasDisponibles.takeLast();
     }
 
-    barraVidaVegito.destruir();
-    barraVidaFreezer.destruir();
+    destruirHUDVida();
+
+    while (!obstaculos.isEmpty()) {
+        delete obstaculos.takeLast();
+    }
 
     delete vegito;
     delete freezer;
@@ -188,13 +201,13 @@ void MainWindow::iniciarNivel1()
     ponerFondo(":/images/backgrounds/nivel1.png", 1.0);
 
     if (vegito == nullptr) {
-        vegito = new Personaje(":/images/sprites/vegitoBateoQuieto.png",
-                               1,
-                               ":/images/sprites/vegitoBateo.png",
-                               5,
-                               650,
-                               540,
-                               20.0f);
+        vegito = new Jugador(":/images/sprites/vegitoBateoQuieto.png",
+                             1,
+                             ":/images/sprites/vegitoBateo.png",
+                             5,
+                             650,
+                             540,
+                             20.0f);
 
         vegito->configurarSpritesEuforia(":/images/sprites/transformacion_vegito.png",
                                          4,
@@ -207,13 +220,13 @@ void MainWindow::iniciarNivel1()
     vegito->setPos(650, 540);
 
     if (freezer == nullptr) {
-        freezer = new Personaje(":/images/sprites/freezerPitcher.png",
-                                6,
-                                ":/images/sprites/freezerPitcher.png",
-                                6,
-                                650,
-                                270,
-                                100.0f);
+        freezer = new Villano(":/images/sprites/freezerPitcher.png",
+                              6,
+                              ":/images/sprites/freezerPitcher.png",
+                              6,
+                              650,
+                              270,
+                              100.0f);
     }
 
     freezer->agregarAEscena(scene);
@@ -274,14 +287,155 @@ void MainWindow::iniciarVariablesNivel1()
 
 void MainWindow::crearHUDNivel1()
 {
-    barraVidaVegito.crear(scene, 20, 48, 280, 24, "Vegito", QColor(30, 160, 255));
-    barraVidaFreezer.crear(scene, 20, 108, 280, 24, "Freezer", QColor(220, 40, 40));
+    destruirHUDVida();
+
+    crearBarraVida(fondoVidaVegito,
+                   rellenoVidaVegito,
+                   bordeVidaVegito,
+                   textoVidaVegito,
+                   20,
+                   48,
+                   "Vegito",
+                   QColor(30, 160, 255));
+
+    crearBarraVida(fondoVidaFreezer,
+                   rellenoVidaFreezer,
+                   bordeVidaFreezer,
+                   textoVidaFreezer,
+                   20,
+                   108,
+                   "Freezer",
+                   QColor(220, 40, 40));
 
     textoEstadoKaioken = scene->addText("");
     textoEstadoKaioken->setDefaultTextColor(QColor(255, 210, 80));
     textoEstadoKaioken->setFont(QFont("Arial", 12, QFont::Bold));
     textoEstadoKaioken->setPos(20, 144);
     textoEstadoKaioken->setZValue(24);
+}
+
+
+void MainWindow::crearBarraVida(QGraphicsRectItem *&fondoBarra,
+                                QGraphicsRectItem *&rellenoBarra,
+                                QGraphicsRectItem *&bordeBarra,
+                                QGraphicsTextItem *&textoBarra,
+                                qreal x,
+                                qreal y,
+                                const QString &etiqueta,
+                                const QColor &colorRelleno)
+{
+    if (scene == nullptr) {
+        return;
+    }
+
+    fondoBarra = scene->addRect(x,
+                                y,
+                                anchoBarraVida,
+                                altoBarraVida,
+                                QPen(Qt::black, 2),
+                                QBrush(QColor(35, 35, 35, 190)));
+
+    rellenoBarra = scene->addRect(x + 2,
+                                  y + 2,
+                                  anchoBarraVida - 4,
+                                  altoBarraVida - 4,
+                                  QPen(Qt::NoPen),
+                                  QBrush(colorRelleno));
+
+    bordeBarra = scene->addRect(x,
+                                y,
+                                anchoBarraVida,
+                                altoBarraVida,
+                                QPen(Qt::white, 2),
+                                QBrush(Qt::NoBrush));
+
+    textoBarra = scene->addText(etiqueta);
+    textoBarra->setDefaultTextColor(Qt::white);
+    textoBarra->setFont(QFont("Arial", 12, QFont::Bold));
+    textoBarra->setPos(x, y - 24);
+
+    fondoBarra->setZValue(20);
+    rellenoBarra->setZValue(21);
+    bordeBarra->setZValue(22);
+    textoBarra->setZValue(23);
+}
+
+void MainWindow::actualizarBarraVida(QGraphicsRectItem *rellenoBarra,
+                                     QGraphicsTextItem *textoBarra,
+                                     qreal x,
+                                     qreal y,
+                                     const QString &etiqueta,
+                                     float vidaActual,
+                                     float vidaMaxima)
+{
+    if (rellenoBarra == nullptr || textoBarra == nullptr) {
+        return;
+    }
+
+    float vidaNormalizada = 0.0f;
+
+    if (vidaMaxima > 0.0f) {
+        vidaNormalizada = vidaActual / vidaMaxima;
+    }
+
+    if (vidaNormalizada < 0.0f) {
+        vidaNormalizada = 0.0f;
+    }
+
+    if (vidaNormalizada > 1.0f) {
+        vidaNormalizada = 1.0f;
+    }
+
+    qreal anchoRelleno = (anchoBarraVida - 4) * vidaNormalizada;
+    rellenoBarra->setRect(x + 2,
+                          y + 2,
+                          anchoRelleno,
+                          altoBarraVida - 4);
+
+    textoBarra->setPlainText(etiqueta +
+                             ": " +
+                             QString::number(vidaActual, 'f', 1) +
+                             " / " +
+                             QString::number(vidaMaxima, 'f', 1));
+}
+
+void MainWindow::setVisibleHUDVida(bool visible)
+{
+    QList<QGraphicsItem*> items;
+    items << fondoVidaVegito << rellenoVidaVegito << bordeVidaVegito << textoVidaVegito
+          << fondoVidaFreezer << rellenoVidaFreezer << bordeVidaFreezer << textoVidaFreezer;
+
+    for (QGraphicsItem *item : items) {
+        if (item != nullptr) {
+            item->setVisible(visible);
+        }
+    }
+}
+
+void MainWindow::destruirHUDVida()
+{
+    QList<QGraphicsItem*> items;
+    items << fondoVidaVegito << rellenoVidaVegito << bordeVidaVegito << textoVidaVegito
+          << fondoVidaFreezer << rellenoVidaFreezer << bordeVidaFreezer << textoVidaFreezer;
+
+    for (QGraphicsItem *item : items) {
+        if (item != nullptr) {
+            if (item->scene() != nullptr) {
+                item->scene()->removeItem(item);
+            }
+
+            delete item;
+        }
+    }
+
+    fondoVidaVegito = nullptr;
+    rellenoVidaVegito = nullptr;
+    bordeVidaVegito = nullptr;
+    textoVidaVegito = nullptr;
+    fondoVidaFreezer = nullptr;
+    rellenoVidaFreezer = nullptr;
+    bordeVidaFreezer = nullptr;
+    textoVidaFreezer = nullptr;
 }
 
 void MainWindow::configurarZonasBateo()
@@ -679,8 +833,7 @@ void MainWindow::ocultarElementosNivel1()
         freezer->setVisible(false);
     }
 
-    barraVidaVegito.setVisible(false);
-    barraVidaFreezer.setVisible(false);
+    setVisibleHUDVida(false);
 
     if (textoEstadoKaioken != nullptr) {
         textoEstadoKaioken->setVisible(false);
@@ -698,9 +851,13 @@ void MainWindow::configurarAtaquesFreezer()
         ataquesFreezer.append({4.3f, 1.5f, ":/images/sprites/bolaFreezer.png"});
         ataquesFreezer.append({5.0f, 2.0f, ":/images/sprites/bolaFreezer.png"});
     }
+
+    if (freezer != nullptr) {
+        freezer->configurarAtaques(ataquesFreezer);
+    }
 }
 
-MainWindow::AtaqueFreezer MainWindow::obtenerAtaqueActual() const
+Villano::Ataque MainWindow::obtenerAtaqueActual() const
 {
     if (ataquesFreezer.isEmpty()) {
         return {3.6f, 1.0f, ":/images/sprites/bolaFreezer.png"};
@@ -714,7 +871,7 @@ MainWindow::AtaqueFreezer MainWindow::obtenerAtaqueActual() const
     return ataquesFreezer.at(indiceAtaque);
 }
 
-Proyectil *MainWindow::obtenerBolaDisponible(const AtaqueFreezer &ataque, QPointF posicionInicial)
+Proyectil *MainWindow::obtenerBolaDisponible(const Villano::Ataque &ataque, QPointF posicionInicial)
 {
     Proyectil *bola = nullptr;
 
@@ -765,7 +922,7 @@ void MainWindow::lanzarBolaFreezer()
     QPointF posicionInicial = freezer->getSprite()->sceneBoundingRect().center();
     posicionInicial.setY(posicionInicial.y() + 45);
 
-    AtaqueFreezer ataque = obtenerAtaqueActual();
+    Villano::Ataque ataque = obtenerAtaqueActual();
     Proyectil *nuevaBola = obtenerBolaDisponible(ataque, posicionInicial);
 
     bolasFreezer.append(nuevaBola);
@@ -810,6 +967,8 @@ void MainWindow::actualizarNivel1()
 
             if (bola->pasoLinea(vegito->getSprite()->y() + 70)) {
                 vegito->recibirDanio(bola->getDanoAtaque());
+                freezer->percibir(false);
+                freezer->aprender(false);
                 rachaDanio = 0.0f;
 
                 eliminarBola(bola);
@@ -948,11 +1107,23 @@ void MainWindow::eliminarBola(Proyectil *bola)
 void MainWindow::actualizarHUD()
 {
     if (vegito != nullptr) {
-        barraVidaVegito.actualizar(vegito->getVidaActual(), vegito->getVidaMaxima());
+        actualizarBarraVida(rellenoVidaVegito,
+                            textoVidaVegito,
+                            20,
+                            48,
+                            "Vegito",
+                            vegito->getVidaActual(),
+                            vegito->getVidaMaxima());
     }
 
     if (freezer != nullptr) {
-        barraVidaFreezer.actualizar(freezer->getVidaActual(), freezer->getVidaMaxima());
+        actualizarBarraVida(rellenoVidaFreezer,
+                            textoVidaFreezer,
+                            20,
+                            108,
+                            "Freezer",
+                            freezer->getVidaActual(),
+                            freezer->getVidaMaxima());
     }
 
     if (textoEstadoKaioken != nullptr) {
@@ -1010,12 +1181,11 @@ void MainWindow::moveFig()
 
 bool MainWindow::bolaEnZonaBateo(Proyectil *bola)
 {
-    if (bola == nullptr || vegito == nullptr) {
+    if (vegito == nullptr) {
         return false;
     }
 
-    return vegito->getSprite()->collidesWithItem(bola->getItem(),
-                                                 Qt::IntersectsItemBoundingRect);
+    return vegito->bolaEnZonaBateo(bola);
 }
 
 QPointF MainWindow::destinoAleatorioBateo()
@@ -1080,6 +1250,8 @@ void MainWindow::keyPressEvent(QKeyEvent *e)
 
                 QPointF destino = destinoAleatorioBateo();
                 bola->iniciarBateo(destino.x(), destino.y());
+                freezer->percibir(true);
+                freezer->aprender(true);
                 reproducirAudiosBatazo();
 
                 if (vegito->estaEnEuforia()) {
@@ -1109,21 +1281,7 @@ void MainWindow::keyPressEvent(QKeyEvent *e)
         bolaControlada->getEstado() == Proyectil::BateadaPorVegito &&
         nivel1Activo) {
 
-        if (e->key() == Qt::Key_A) {
-            bolaControlada->ajustarDestino(-45, 0);
-        }
-
-        if (e->key() == Qt::Key_D) {
-            bolaControlada->ajustarDestino(45, 0);
-        }
-
-        if (e->key() == Qt::Key_W) {
-            bolaControlada->ajustarDestino(0, -45);
-        }
-
-        if (e->key() == Qt::Key_S) {
-            bolaControlada->ajustarDestino(0, 45);
-        }
+        vegito->controlarProyectil(bolaControlada, e->key());
     }
 }
 

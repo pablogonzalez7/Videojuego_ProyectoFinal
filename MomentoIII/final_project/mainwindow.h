@@ -1,6 +1,7 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
+#include <QBrush>
 #include <QColor>
 #include <QDebug>
 #include <QFont>
@@ -19,6 +20,7 @@
 #include <QMainWindow>
 #include <QMediaPlayer>
 #include <QPainterPath>
+#include <QPen>
 #include <QPointF>
 #include <QPushButton>
 #include <QRandomGenerator>
@@ -34,9 +36,10 @@
 #include <QAudioOutput>
 #endif
 
-#include "barravida.h"
-#include "personaje.h"
+#include "jugador.h"
+#include "villano.h"
 #include "proyectil.h"
+#include "obstaculo.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -47,20 +50,15 @@ QT_END_NAMESPACE
 /*
     MainWindow
 
-    Conserva el flujo general del juego y el menú, pero varias tareas
-    puntuales ahora se delegan a Personaje y BarraVida.
+    Conserva el flujo general del juego y el menú.
+    La vida ahora pertenece a Personaje/Jugador/Villano y el dibujo
+    del HUD se actualiza desde MainWindow.
 */
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
 
 public:
-    struct AtaqueFreezer {
-        float velocidad;
-        float dano;
-        QString sprite;
-    };
-
     enum DificultadJuego {
         Facil,
         Dificil
@@ -124,18 +122,28 @@ private:
     QLabel *labelNivel2Titulo;
     QLabel *labelNivel2Texto;
 
-    Personaje *vegito;
-    Personaje *freezer;
+    Jugador *vegito;
+    Villano *freezer;
 
-    BarraVida barraVidaVegito;
-    BarraVida barraVidaFreezer;
+    QGraphicsRectItem *fondoVidaVegito;
+    QGraphicsRectItem *rellenoVidaVegito;
+    QGraphicsRectItem *bordeVidaVegito;
+    QGraphicsTextItem *textoVidaVegito;
+
+    QGraphicsRectItem *fondoVidaFreezer;
+    QGraphicsRectItem *rellenoVidaFreezer;
+    QGraphicsRectItem *bordeVidaFreezer;
+    QGraphicsTextItem *textoVidaFreezer;
+
     QGraphicsTextItem *textoEstadoKaioken;
+    qreal anchoBarraVida;
+    qreal altoBarraVida;
 
     Proyectil *bolaFreezer;
     Proyectil *bolaControlada;
     QList<Proyectil*> bolasFreezer;
     QList<Proyectil*> bolasDisponibles;
-    QList<QGraphicsRectItem*> obst;
+    QList<Obstaculo*> obstaculos;
     QList<QGraphicsPathItem*> debugZonas;
 
     QPainterPath zonaDanioBajo;
@@ -150,7 +158,7 @@ private:
     float ancho;
     float alto;
     DificultadJuego dificultadSeleccionada;
-    QList<AtaqueFreezer> ataquesFreezer;
+    QList<Villano::Ataque> ataquesFreezer;
 
     bool lanzamientoOscilatorio;
     bool esperandoLanzamientos;
@@ -187,12 +195,29 @@ private:
     void configurarZonasBateo();
     void limpiarZonasDebug();
     void crearHUDNivel1();
+    void crearBarraVida(QGraphicsRectItem *&fondoBarra,
+                        QGraphicsRectItem *&rellenoBarra,
+                        QGraphicsRectItem *&bordeBarra,
+                        QGraphicsTextItem *&textoBarra,
+                        qreal x,
+                        qreal y,
+                        const QString &etiqueta,
+                        const QColor &colorRelleno);
+    void actualizarBarraVida(QGraphicsRectItem *rellenoBarra,
+                             QGraphicsTextItem *textoBarra,
+                             qreal x,
+                             qreal y,
+                             const QString &etiqueta,
+                             float vidaActual,
+                             float vidaMaxima);
+    void setVisibleHUDVida(bool visible);
+    void destruirHUDVida();
     void actualizarHUD();
     void actualizarDificultad();
     void revisarEuforiaVegito();
 
-    AtaqueFreezer obtenerAtaqueActual() const;
-    Proyectil *obtenerBolaDisponible(const AtaqueFreezer &ataque,
+    Villano::Ataque obtenerAtaqueActual() const;
+    Proyectil *obtenerBolaDisponible(const Villano::Ataque &ataque,
                                      QPointF posicionInicial);
     bool bolaEnZonaBateo(Proyectil *bola);
     QPointF destinoAleatorioBateo();

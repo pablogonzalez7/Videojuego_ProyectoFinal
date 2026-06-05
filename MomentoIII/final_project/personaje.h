@@ -9,8 +9,10 @@
 /*
     Clase Personaje
 
-    Encapsula la parte gráfica y el estado básico de vida de un personaje.
-    También centraliza la animación para evitar usar un timer por sprite.
+    Clase base de cualquier personaje del juego.
+    Conserva exactamente la lógica que ya tenían: sprite, animación,
+    posición, vida y euforia/kaioken. Jugador y Villano heredan de aquí
+    para no cargar toda la lógica en una sola clase.
 */
 class Personaje
 {
@@ -33,7 +35,8 @@ public:
               qreal posX,
               qreal posY,
               float vidaMaxima);
-    ~Personaje();
+
+    virtual ~Personaje();
 
     void configurarSpritesEuforia(const QString &rutaTransformacion,
                                   int framesTransformacion,
@@ -46,9 +49,9 @@ public:
     void setPos(qreal posX, qreal posY);
     void setVisible(bool visible);
 
-    void actualizar(int dtMs);
-    void reproducirAtaque();
-    void activarEuforia();
+    virtual void actualizar(int dtMs);
+    virtual void reproducirAtaque();
+    virtual void activarEuforia();
 
     bool estaEnEuforia() const;
     bool estaAnimando() const;
@@ -58,7 +61,7 @@ public:
     void reiniciarVida();
     void recibirDanio(float dano);
 
-private:
+protected:
     void mostrarSpriteQuieto();
     void iniciarAnimacion(const DatosSprite &datos, TipoAnimacion tipo);
 
