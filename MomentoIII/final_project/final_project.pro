@@ -1,4 +1,4 @@
-QT += widgets
+QT += widgets multimedia
 
 CONFIG += c++17
 
@@ -7,17 +7,23 @@ CONFIG += c++17
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += \
+    jugador.cpp \
     main.cpp \
     mainwindow.cpp \
+    obstaculo.cpp \
     personaje.cpp \
     proyectil.cpp \
-    sprite.cpp
+    sprite.cpp \
+    villano.cpp
 
 HEADERS += \
+    jugador.h \
     mainwindow.h \
+    obstaculo.h \
     personaje.h \
     proyectil.h \
-    sprite.h
+    sprite.h \
+    villano.h
 
 FORMS += \
     mainwindow.ui
@@ -31,4 +37,5 @@ RESOURCES += \
     pictures.qrc
 
 DISTFILES += \
-    images/backgrounds/botonInicio.png
+    images/backgrounds/botonInicio.png \
+    images/sprites/bolafreezer3.png
