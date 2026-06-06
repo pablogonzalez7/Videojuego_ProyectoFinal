@@ -22,11 +22,11 @@
         <file>images/sprites/black_lanzamiento.png</file>
         <file>images/sprites/black_quieto.png</file>
         <file>images/sprites/black_dificil_quieto.png</file>
-        <file alias="images/sprites/black_lanzamiento_dificil.png">images/sprites/black_lanzamiento_dificl.png</file>
+        <file>images/sprites/rafaga_black_dificil.png</file>
         <file>images/sprites/black_dificil_ataque.png</file>
         <file>images/sprites/black_dificil_vuelo.png</file>
         <file>images/sprites/black_dificil_bajada.png</file>
-        <file alias="images/sprites/rafaga_black_dificil.png">images/sprites/ráfaga_black_dificl.png</file>
+        <file>images/sprites/rafaga_black_dificil.png</file>
         <file>images/sprites/final_kamehameha.png</file>
         <file>images/sprites/bolaFreezer.png</file>
         <file>images/sprites/bolaFreezer2.png</file>
