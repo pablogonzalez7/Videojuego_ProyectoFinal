@@ -108,21 +108,39 @@ short Villano::razonar()
 
 QPointF Villano::razonarDestinoLejano(const QRectF &limitesEscena) const
 {
-    const qreal margenHorizontal = limitesEscena.width() * 0.12;
-    const qreal margenVertical = limitesEscena.height() * 0.18;
-    const qreal centroEscena = limitesEscena.center().x();
-    const qreal umbralCentro = limitesEscena.width() * 0.10;
+    /*
+        Agente autónomo del nivel 2.
 
-    qreal destinoX = limitesEscena.left() + margenHorizontal;
+        Goku Black percibe la posición actual del jugador y calcula un destino
+        hacia la zona izquierda, que es donde se ubica Gogeta. De esta forma,
+        el disparo sale desde el lado derecho y viaja hacia el jugador.
+    */
 
-    if (ultimaPosicionJugador.x() < centroEscena - umbralCentro) {
-        destinoX = limitesEscena.right() - margenHorizontal;
+    qreal destinoX = ultimaPosicionJugador.x();
+    qreal destinoY = ultimaPosicionJugador.y();
+
+    const qreal limiteIzquierdo = limitesEscena.left() + 70;
+    const qreal limiteDerecho = limitesEscena.center().x() - 70;
+    const qreal limiteSuperior = limitesEscena.top() + 90;
+    const qreal limiteInferior = limitesEscena.bottom() - 90;
+
+    if (destinoX < limiteIzquierdo) {
+        destinoX = limiteIzquierdo;
     }
-    else if (ultimaPosicionJugador.x() <= centroEscena + umbralCentro && sesgoCentro > 0) {
-        destinoX = limitesEscena.right() - margenHorizontal;
+
+    if (destinoX > limiteDerecho) {
+        destinoX = limiteDerecho;
     }
 
-    return QPointF(destinoX, limitesEscena.bottom() - margenVertical);
+    if (destinoY < limiteSuperior) {
+        destinoY = limiteSuperior;
+    }
+
+    if (destinoY > limiteInferior) {
+        destinoY = limiteInferior;
+    }
+
+    return QPointF(destinoX, destinoY);
 }
 
 Proyectil *Villano::actuar(QGraphicsScene *scene, QPointF posicionInicial)

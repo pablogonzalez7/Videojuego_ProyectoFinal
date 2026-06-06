@@ -252,8 +252,10 @@ void MainWindow::iniciarNivel2Facil()
         scene->addItem(gogeta);
     }
 
-    posicionGogetaX = scene->sceneRect().width() / 2.0;
-    posicionGogetaY = scene->sceneRect().height() - 135;
+    const QRectF rectaNivel2 = scene->sceneRect();
+
+    posicionGogetaX = rectaNivel2.left() + rectaNivel2.width() * 0.18;
+    posicionGogetaY = rectaNivel2.bottom() - 135;
     rutaSpriteGogetaActual = ":/images/sprites/gogeta_derecha.png";
     rutaSpriteGogetaDireccion = rutaSpriteGogetaActual;
     gogetaSaltando = false;
@@ -267,23 +269,23 @@ void MainWindow::iniciarNivel2Facil()
         gokuBlack = new Villano(":/images/sprites/black_quieto_actualizado.png",1,":/images/sprites/black_lanzamiento.png",5,650,135,10.0f);
         gokuBlack->getSprite()->setMantenerTamanoVisual(true);
         gokuBlack->configurarAtaques({{4.8f,
-                                      1.0f,
-                                      ":/images/sprites/bolaBlack_actualizada.png",
-                                      ":/images/sprites/black_lanzamiento.png",
-                                      6,
-                                      {
-                                          QRectF(7, 0, 73, 130),
-                                          QRectF(110, 0, 71, 130),
-                                          QRectF(214, 0, 57, 130),
-                                          QRectF(313, 0, 81, 130),
-                                          QRectF(434, 0, 64, 130),
-                                          QRectF(530, 0, 58, 130)
-                                      }}});
+                                       1.0f,
+                                       ":/images/sprites/bolaBlack_actualizada.png",
+                                       ":/images/sprites/black_lanzamiento.png",
+                                       6,
+                                       {
+                                           QRectF(7, 0, 73, 130),
+                                           QRectF(110, 0, 71, 130),
+                                           QRectF(214, 0, 57, 130),
+                                           QRectF(313, 0, 81, 130),
+                                           QRectF(434, 0, 64, 130),
+                                           QRectF(530, 0, 58, 130)
+                                       }}});
     }
 
     gokuBlack->agregarAEscena(scene);
     gokuBlack->setVisible(true);
-    gokuBlack->setPos(scene->sceneRect().width() / 2.0, 135);
+    gokuBlack->setPos(rectaNivel2.right() - 160, posicionGogetaY - 40);
     gokuBlack->reiniciarVida();
 
     iniciarVariablesNivel2();
@@ -1472,8 +1474,11 @@ void MainWindow::lanzarBolaBlack()
     }
 
     esperandoLanzamientoBlack = false;
-    const qreal posicionBaseX = scene->sceneRect().width() / 2.0;
-    const qreal posicionBaseY = 135.0;
+
+    const QRectF recta = scene->sceneRect();
+    const qreal posicionBaseX = recta.right() - 160.0;
+    const qreal posicionBaseY = posicionGogetaY - 40.0;
+
     gokuBlack->setPos(posicionBaseX, posicionBaseY);
 
     gokuBlack->percibirPosicionJugador(gogeta->sceneBoundingRect().center());
@@ -1489,7 +1494,7 @@ void MainWindow::lanzarBolaBlack()
         gokuBlack->setPos(posicionBaseX, posicionBaseY);
 
         QPointF posicionInicial = gokuBlack->getSprite()->sceneBoundingRect().center();
-        posicionInicial.setY(posicionInicial.y() + 25);
+        posicionInicial.setX(posicionInicial.x() - 45);
 
         Proyectil *bola = nullptr;
 
@@ -1723,7 +1728,7 @@ void MainWindow::moverGogeta(qreal deltaX, const QString &rutaSprite)
 
     qreal nuevaX = posicionGogetaX + deltaX;
     const qreal limiteIzquierdo = 70;
-    const qreal limiteDerecho = scene->sceneRect().width() - 70;
+    const qreal limiteDerecho = scene->sceneRect().center().x() - 70;
 
     if (nuevaX < limiteIzquierdo) {
         nuevaX = limiteIzquierdo;
@@ -1841,7 +1846,7 @@ void MainWindow::resizeEvent(QResizeEvent *event)
     }
 
     if (nivel2Activo && gokuBlack != nullptr) {
-        gokuBlack->setPos(scene->sceneRect().width() / 2.0, 135);
+        gokuBlack->setPos(scene->sceneRect().right() - 160.0, posicionGogetaY - 40.0);
     }
 
     ajustarFondo();
