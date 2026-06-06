@@ -111,13 +111,16 @@ QPointF Villano::razonarDestinoLejano(const QRectF &limitesEscena) const
     /*
         Agente autónomo del nivel 2.
 
-        Goku Black percibe la posición actual del jugador y calcula un destino
-        hacia la zona izquierda, que es donde se ubica Gogeta. De esta forma,
-        el disparo sale desde el lado derecho y viaja hacia el jugador.
+        Black percibe la posición de Gogeta y calcula un destino
+        dentro de la mitad izquierda de la escena. Se agrega una pequeña
+        variación aleatoria para que no todos los lanzamientos sean idénticos.
     */
 
     qreal destinoX = ultimaPosicionJugador.x();
     qreal destinoY = ultimaPosicionJugador.y();
+
+    destinoX += QRandomGenerator::global()->bounded(-35, 36);
+    destinoY += QRandomGenerator::global()->bounded(-55, 56);
 
     const qreal limiteIzquierdo = limitesEscena.left() + 70;
     const qreal limiteDerecho = limitesEscena.center().x() - 70;
