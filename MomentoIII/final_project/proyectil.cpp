@@ -266,65 +266,59 @@ void Proyectil::configurarAtaque(float velocidad, float dano)
 {
     ataqueActual.velocidad = velocidad;
     ataqueActual.dano = dano;
+
+    /*
+        Los ataques especiales de Black deben sentirse más rápidos
+        que una pelota normal. La duración del vuelo se ajusta según el daño
+        y el sprite usado.
+    */
+    if (dano >= 3.0f || rutaSprite.contains("rafaga_black_dificil")) {
+        duracionVuelo = 1.25f;
+    }
+    else {
+        duracionVuelo = 3.0f;
+    }
 }
 
 void Proyectil::actualizarBateo(float dt)
 {
-    /*
-        Esta función mueve la bola después del batazo.
-
-        La bola se desplaza hacia su destino y cambia de tamaño
-        para simular una trayectoria elevada en vista cenital.
-    */
     if (estado != BateadaPorVegito) {
         return;
     }
 
     tiempoVuelo += dt;
 
-    // Normaliza el avance del vuelo entre 0 y 1 para interpolar trayectorias.
     float t = tiempoVuelo / duracionVuelo;
 
     if (t > 1.0) {
         t = 1.0;
     }
 
-    /*
-        Interpolación lineal entre la posición inicial y el destino.
-    */
     qreal nuevaX = inicioX + (destinoX - inicioX) * t;
     qreal nuevaY = inicioY + (destinoY - inicioY) * t;
 
-    /*
-        Arco parabólico visual.
+    const bool esRafagaBlack = rutaSprite.contains("rafaga_black_dificil");
 
-        El proyectil sube a mitad del recorrido y baja al llegar al destino.
-        En el nivel 2 permite que la bola viaje desde la derecha hacia la
-        izquierda con forma parabólica, sin cambiar el punto final de caída.
+    /*
+        Las pelotas normales mantienen un arco más visible.
+        La ráfaga especial usa un arco menor para sentirse más directa.
     */
-    qreal arcoParabolico = 90.0 * qSin(3.1416 * t);
+    qreal arcoParabolico = esRafagaBlack ? 35.0 * qSin(3.1416 * t)
+                                         : 90.0 * qSin(3.1416 * t);
+
     nuevaY -= arcoParabolico;
 
-    /*
-        Escala visual de la bola.
+    qreal escala = 1.0;
 
-        Antes estaba terminando demasiado pequeña y eso hacía que visualmente
-        pareciera caer en una zona distinta a la que realmente contaba.
+    if (esRafagaBlack) {
+        escala = 1.0;
+    }
+    else {
+        escala = 1.0 + 0.75 * qSin(3.1416 * t) - 0.10 * t;
 
-        Ahora:
-        - al inicio del batazo: escala = 1.0
-        - en la mitad del vuelo: escala aumenta
-        - al caer: escala termina en 0.90
-
-        Así la bola cae casi del mismo tamaño con el que salió de Freezer.
-    */
-    qreal escala = 1.0 + 0.75 * qSin(3.1416 * t) - 0.10 * t;
-
-    /*
-        Protección para que nunca se vuelva diminuta.
-    */
-    if (escala < 0.90) {
-        escala = 0.90;
+        if (escala < 0.90) {
+            escala = 0.90;
+        }
     }
 
     proyectil->setPos(nuevaX, nuevaY);
