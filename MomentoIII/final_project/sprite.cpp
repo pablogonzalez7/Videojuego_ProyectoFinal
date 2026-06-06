@@ -138,7 +138,16 @@ void Sprite::paint(QPainter *painter,const QStyleOptionGraphicsItem *option,QWid
     const qreal anchoVisible = usarTamanoVisualFijo ? anchoVisualFijo : (mantenerTamanoVisual ? anchoBase : frameOrigen.width());
     const qreal altoVisible = usarTamanoVisualFijo ? altoVisualFijo : (mantenerTamanoVisual ? altoBase : frameOrigen.height());
 
-    painter->drawPixmap(QRectF(-anchoVisible / 2, -altoVisible / 2, anchoVisible, altoVisible),
-                        pixmap,
-                        frameOrigen);
+    QRectF destino(-anchoVisible / 2, -altoVisible / 2, anchoVisible, altoVisible);
+
+    if (usarTamanoVisualFijo && frameOrigen.width() > 0.0 && frameOrigen.height() > 0.0) {
+        const qreal escalaX = anchoVisible / frameOrigen.width();
+        const qreal escalaY = altoVisible / frameOrigen.height();
+        const qreal escala = qMin(escalaX, escalaY);
+        const qreal anchoAjustado = frameOrigen.width() * escala;
+        const qreal altoAjustado = frameOrigen.height() * escala;
+        destino = QRectF(-anchoAjustado / 2, -altoAjustado / 2, anchoAjustado, altoAjustado);
+    }
+
+    painter->drawPixmap(destino, pixmap, frameOrigen);
 }

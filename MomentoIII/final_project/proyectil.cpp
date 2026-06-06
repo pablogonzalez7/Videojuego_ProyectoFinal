@@ -12,6 +12,11 @@ Proyectil::Proyectil(QGraphicsScene *scene,
     // MainWindow suministra la imagen del proyectil y el punto desde el cual
     // debe aparecer visualmente en la escena.
     QPixmap pixmap(rutaSprite);
+    int tamanoBase = 35;
+
+    if (rutaSprite.contains("rafaga_black_dificil")) {
+        tamanoBase = 90;
+    }
 
     /*
         Se escala la bola a un tamaño base de 35x35.
@@ -19,7 +24,7 @@ Proyectil::Proyectil(QGraphicsScene *scene,
         Este será el tamaño normal de referencia.
         Durante el vuelo se puede agrandar, pero al caer volverá casi a este tamaño.
     */
-    pixmap = pixmap.scaled(35, 35,
+    pixmap = pixmap.scaled(tamanoBase, tamanoBase,
                            Qt::KeepAspectRatio,
                            Qt::SmoothTransformation);
 
@@ -206,7 +211,13 @@ void Proyectil::reiniciar(QPointF posicionInicial, const QString &rutaImagen)
     rutaSprite = rutaImagen;
 
     QPixmap pixmap(rutaSprite);
-    pixmap = pixmap.scaled(35, 35,
+    int tamanoBase = 35;
+
+    if (rutaSprite.contains("rafaga_black_dificil")) {
+        tamanoBase = 90;
+    }
+
+    pixmap = pixmap.scaled(tamanoBase, tamanoBase,
                            Qt::KeepAspectRatio,
                            Qt::SmoothTransformation);
 

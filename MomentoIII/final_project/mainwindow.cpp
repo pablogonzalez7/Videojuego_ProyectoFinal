@@ -77,16 +77,33 @@ MainWindow::MainWindow(QWidget *parent)
     puedeBatear = true;
     nivel2EnPausa = false;
     esperandoLanzamientoBlack = false;
+    nivel2DificilActivo = false;
+    gogetaKamehamehaActivo = false;
+    danioKamehamehaAplicado = false;
     rutaSpriteGogetaActual = "";
     rutaSpriteGogetaDireccion = ":/images/sprites/gogeta_derecha.png";
     posicionGogetaX = 650;
     posicionGogetaY = 585;
-    vidaGogeta = 3;
-    tiempoSaltoGogetaMs = 0;
-    duracionSaltoGogetaMs = 420;
+    posicionActualGogetaY = posicionGogetaY;
+    velocidadVerticalGogeta = 0.0;
+    anchoVisualGogeta = 90.0;
+    altoVisualGogeta = 150.0;
+    vidaGogetaNivel2 = 100.0;
+    vidaMaximaGogetaNivel2 = 100.0;
+    vidaBlackNivel2 = 100.0;
+    vidaMaximaBlackNivel2 = 100.0;
+    saltosUsadosGogeta = 0;
     tiempoAnimacionGogetaMs = 0;
     tiempoEntreFramesGogetaMs = 60;
-    disparosEsquivadosNivel2 = 0;
+    tiempoRetencionKamehamehaMs = 0;
+    tiempoMovimientoBlackDificilMs = 0;
+    tiempoAtaqueEspecialBlackMs = 0;
+    pelotasAtrapadasNivel2 = 0;
+    pelotasPerdidasNivel2 = 0;
+    outsNivel2 = 0;
+    carrerasBlackNivel2 = 0;
+    cargaKamehamehaNivel2 = 0;
+    cargaMaximaKamehamehaNivel2 = 5;
     anchoBarraVida = 280;
     altoBarraVida = 24;
 
@@ -226,9 +243,11 @@ void MainWindow::abrirNivel2DesdeSelector()
 void MainWindow::iniciarNivel2Facil()
 {
     detenerAudioInicio();
+    dificultadSeleccionada = Facil;
     nivel1Activo = false;
     nivel2Activo = true;
     nivel2EnPausa = false;
+    nivel2DificilActivo = false;
 
     if (timerNivel1 != nullptr) {
         timerNivel1->stop();
@@ -255,33 +274,37 @@ void MainWindow::iniciarNivel2Facil()
     const QRectF rectaNivel2 = scene->sceneRect();
 
     posicionGogetaX = rectaNivel2.left() + rectaNivel2.width() * 0.18;
-    posicionGogetaY = rectaNivel2.bottom() - 135;
+    posicionGogetaY = rectaNivel2.bottom() - 170;
+    posicionActualGogetaY = posicionGogetaY;
     rutaSpriteGogetaActual = ":/images/sprites/gogeta_derecha.png";
     rutaSpriteGogetaDireccion = rutaSpriteGogetaActual;
     gogetaSaltando = false;
     gogeta->cambiarSprite(rutaSpriteGogetaActual, 3);
-    gogeta->limpiarTamanoVisualFijo();
+    gogeta->fijarTamanoVisual(anchoVisualGogeta, altoVisualGogeta);
     gogeta->reiniciarAnimacion();
-    gogeta->setPos(posicionGogetaX, posicionGogetaY);
+    gogeta->setPos(posicionGogetaX, posicionActualGogetaY);
     gogeta->setVisible(true);
 
-    if (gokuBlack == nullptr) {
-        gokuBlack = new Villano(":/images/sprites/black_quieto_actualizado.png",1,":/images/sprites/black_lanzamiento.png",5,650,135,10.0f);
-        gokuBlack->getSprite()->setMantenerTamanoVisual(true);
-        gokuBlack->configurarAtaques({{4.8f,
-                                       1.0f,
-                                       ":/images/sprites/bolaBlack_actualizada.png",
-                                       ":/images/sprites/black_lanzamiento.png",
-                                       6,
-                                       {
-                                           QRectF(7, 0, 73, 130),
-                                           QRectF(110, 0, 71, 130),
-                                           QRectF(214, 0, 57, 130),
-                                           QRectF(313, 0, 81, 130),
-                                           QRectF(434, 0, 64, 130),
-                                           QRectF(530, 0, 58, 130)
-                                       }}});
+    if (gokuBlack != nullptr) {
+        delete gokuBlack;
+        gokuBlack = nullptr;
     }
+
+    gokuBlack = new Villano(":/images/sprites/black_quieto.png",1,":/images/sprites/black_lanzamiento.png",5,650,135,10.0f);
+    gokuBlack->getSprite()->setMantenerTamanoVisual(true);
+    gokuBlack->configurarAtaques({{4.8f,
+                                   1.0f,
+                                   ":/images/sprites/bolaBlack_actualizada.png",
+                                   ":/images/sprites/black_lanzamiento.png",
+                                   6,
+                                   {
+                                       QRectF(7, 0, 73, 130),
+                                       QRectF(110, 0, 71, 130),
+                                       QRectF(214, 0, 57, 130),
+                                       QRectF(313, 0, 81, 130),
+                                       QRectF(434, 0, 64, 130),
+                                       QRectF(530, 0, 58, 130)
+                                   }}});
 
     gokuBlack->agregarAEscena(scene);
     gokuBlack->setVisible(true);
@@ -301,12 +324,77 @@ void MainWindow::iniciarNivel2Facil()
 
 void MainWindow::iniciarNivel2Dificil()
 {
-    if (labelNivel2Texto != nullptr) {
-        labelNivel2Texto->setText(
-            "Nivel 2 dificil aun no esta implementado.\n"
-            "Por ahora puedes entrar al modo facil y esquivar con A, D y W."
-            );
+    detenerAudioInicio();
+    dificultadSeleccionada = Dificil;
+    nivel1Activo = false;
+    nivel2Activo = true;
+    nivel2EnPausa = false;
+    nivel2DificilActivo = true;
+
+    if (timerNivel1 != nullptr) {
+        timerNivel1->stop();
     }
+
+    ui->labelTitulo->hide();
+    ocultarPantallaReglas();
+    ocultarOpcionesDificultad();
+    ocultarPantallaNivel2();
+    ocultarElementosNivel1();
+
+    ponerFondo(":/images/backgrounds/nivel2.png", 1.0);
+
+    if (gogeta == nullptr) {
+        gogeta = new Sprite(":/images/sprites/gogeta_derecha.png", 3);
+        gogeta->setMantenerTamanoVisual(true);
+        scene->addItem(gogeta);
+        gogeta->setZValue(8);
+    }
+    else if (gogeta->scene() != scene) {
+        scene->addItem(gogeta);
+    }
+
+    const QRectF rectaNivel2 = scene->sceneRect();
+
+    posicionGogetaX = rectaNivel2.left() + rectaNivel2.width() * 0.18;
+    posicionGogetaY = rectaNivel2.bottom() - 170;
+    posicionActualGogetaY = posicionGogetaY;
+    rutaSpriteGogetaActual = ":/images/sprites/gogeta_derecha.png";
+    rutaSpriteGogetaDireccion = rutaSpriteGogetaActual;
+    gogetaSaltando = false;
+    gogetaKamehamehaActivo = false;
+    gogeta->cambiarSprite(rutaSpriteGogetaActual, 3);
+    gogeta->fijarTamanoVisual(anchoVisualGogeta, altoVisualGogeta);
+    gogeta->reiniciarAnimacion();
+    gogeta->setPos(posicionGogetaX, posicionActualGogetaY);
+    gogeta->setVisible(true);
+
+    if (gokuBlack != nullptr) {
+        delete gokuBlack;
+        gokuBlack = nullptr;
+    }
+
+    gokuBlack = new Villano(":/images/sprites/black_dificil_quieto.png",1,":/images/sprites/black_lanzamiento_dificil.png",4,650,135,100.0f);
+    gokuBlack->getSprite()->setMantenerTamanoVisual(true);
+    gokuBlack->configurarAtaques({{5.0f,
+                                   1.0f,
+                                   ":/images/sprites/bolaBlack_actualizada.png",
+                                   ":/images/sprites/black_lanzamiento_dificil.png",
+                                   4,
+                                   {}}});
+    gokuBlack->agregarAEscena(scene);
+    gokuBlack->setVisible(true);
+    gokuBlack->setPos(rectaNivel2.right() - 160, posicionGogetaY - 55);
+    gokuBlack->reiniciarVida();
+
+    iniciarVariablesNivel2();
+
+    if (timerNivel2 == nullptr) {
+        timerNivel2 = new QTimer(this);
+        connect(timerNivel2, &QTimer::timeout, this, &MainWindow::actualizarNivel2);
+    }
+
+    timerNivel2->start(16);
+    programarSiguienteLanzamientoBlack();
 }
 
 void MainWindow::iniciarNivel1()
@@ -407,6 +495,18 @@ void MainWindow::crearHUDNivel1()
     textoEstadoKaioken->setFont(QFont("Arial", 12, QFont::Bold));
     textoEstadoKaioken->setPos(20, 144);
     textoEstadoKaioken->setZValue(24);
+}
+
+void MainWindow::crearHUDNivel2Dificil()
+{
+    destruirHUDVida();
+
+    const qreal xBlack = scene != nullptr
+                             ? scene->sceneRect().width() - anchoBarraVida - 20
+                             : 20;
+
+    crearBarraVida(fondoVidaVegito,rellenoVidaVegito,bordeVidaVegito,textoVidaVegito,20,48,"Gogeta",QColor(60, 170, 255));
+    crearBarraVida(fondoVidaFreezer,rellenoVidaFreezer,bordeVidaFreezer,textoVidaFreezer,xBlack,48,"Black",QColor(220, 50, 70));
 }
 
 
@@ -715,12 +815,15 @@ void MainWindow::crearPantallaNivel2()
 
     labelNivel2Texto->setText(
         "Escoge la dificultad del Nivel 2.\n"
-        "En modo facil, Gogeta esquiva los disparos de Goku Black.\n"
+        "En modo facil, Gogeta atrapa las pelotas de Goku Black.\n"
+        "En modo dificil, las atrapadas cargan el Final Kamehameha con Q.\n"
         "Controles del modo facil:\n"
         "-> A mueve a Gogeta hacia la izquierda.\n"
         "-> D mueve a Gogeta hacia la derecha.\n"
-        "-> W activa el salto de 6 frames.\n"
-        "El modo dificil queda visible en la interfaz, pero aun no esta implementado."
+        "-> W permite hasta triple salto.\n"
+        "-> Cada 3 pelotas atrapadas suman 1 out para Gogeta.\n"
+        "-> Cada 3 pelotas perdidas suman 1 carrera para Black.\n"
+        "En dificil, las 3 atrapadas para out deben ser consecutivas."
         );
 
     connect(botonNivel1, &QPushButton::clicked, this, &MainWindow::abrirNivel1DesdeSelector);
@@ -888,12 +991,15 @@ void MainWindow::mostrarPantallaNivel2()
     if (labelNivel2Texto != nullptr) {
         labelNivel2Texto->setText(
             "Escoge la dificultad del Nivel 2.\n"
-            "En modo facil, Gogeta esquiva los disparos de Goku Black.\n"
+            "En modo facil, Gogeta atrapa las pelotas de Goku Black.\n"
+            "En modo dificil, las atrapadas cargan el Final Kamehameha con Q.\n"
             "Controles del modo facil:\n"
             "-> A mueve a Gogeta hacia la izquierda.\n"
             "-> D mueve a Gogeta hacia la derecha.\n"
-            "-> W activa el salto de 6 frames.\n"
-            "El modo dificil queda visible en la interfaz, pero aun no esta implementado."
+            "-> W permite hasta triple salto.\n"
+            "-> Cada 3 pelotas atrapadas suman 1 out para Gogeta.\n"
+            "-> Cada 3 pelotas perdidas suman 1 carrera para Black.\n"
+            "En dificil, las 3 atrapadas para out deben ser consecutivas."
             );
     }
 
@@ -975,6 +1081,9 @@ void MainWindow::ocultarElementosNivel2()
     nivel2Activo = false;
     nivel2EnPausa = false;
     esperandoLanzamientoBlack = false;
+    nivel2DificilActivo = false;
+    gogetaKamehamehaActivo = false;
+    danioKamehamehaAplicado = false;
 
     if (timerNivel2 != nullptr) {
         timerNivel2->stop();
@@ -995,6 +1104,8 @@ void MainWindow::ocultarElementosNivel2()
     if (gokuBlack != nullptr) {
         gokuBlack->setVisible(false);
     }
+
+    setVisibleHUDVida(false);
 
     if (textoEstadoNivel2 != nullptr) {
         textoEstadoNivel2->setVisible(false);
@@ -1204,28 +1315,61 @@ void MainWindow::actualizarNivel2()
 
     gokuBlack->actualizar(16);
     actualizarSaltoGogeta(16);
+    actualizarKamehamehaGogeta(16);
+
+    if (nivel2DificilActivo) {
+        actualizarBlackDificil(16);
+    }
 
     for (int i = bolasBlack.size() - 1; i >= 0; i--) {
         Proyectil *bola = bolasBlack.at(i);
         const float factorVelocidad = bola->getVelocidadAtaque() / 3.6f;
+        const bool esAtaqueEspecial = nivel2DificilActivo && bola->getDanoAtaque() >= 3.0f;
         bola->actualizarBateo(dt * factorVelocidad);
 
         if (spriteColisionaConProyectil(gogeta, bola)) {
-            vidaGogeta--;
-            gokuBlack->aprenderTrayectoria(true);
+            if (esAtaqueEspecial) {
+                aplicarDanioGogetaNivel2(18.0f);
+            }
+            else {
+                pelotasAtrapadasNivel2++;
+                gokuBlack->aprenderTrayectoria(true);
+
+                if (nivel2DificilActivo) {
+                    if (cargaKamehamehaNivel2 < cargaMaximaKamehamehaNivel2) {
+                        cargaKamehamehaNivel2++;
+                    }
+                }
+            }
+
             eliminarBolaBlack(bola);
+
+            if (!esAtaqueEspecial && pelotasAtrapadasNivel2 >= 3) {
+                pelotasAtrapadasNivel2 = 0;
+                outsNivel2++;
+
+                if (nivel2DificilActivo) {
+                    aplicarDanioBlackNivel2(12.0f);
+                }
+            }
+
+            actualizarHUD();
             actualizarTextoNivel2();
 
-            if (vidaGogeta <= 0) {
-                nivel2EnPausa = true;
-                nivel2Activo = false;
+            if (outsNivel2 >= 3) {
+                finalizarNivel2("Gogeta gana con 3 outs. Vuelve a entrar al nivel 2 para jugar otra vez.");
+                return;
+            }
 
-                if (timerNivel2 != nullptr) {
-                    timerNivel2->stop();
+            if (nivel2DificilActivo) {
+                if (vidaGogetaNivel2 <= 0.0f) {
+                    finalizarNivel2("Goku Black vacio la vida de Gogeta. Vuelve a entrar al nivel 2 para reintentar.");
+                    return;
                 }
 
-                if (textoEstadoNivel2 != nullptr) {
-                    textoEstadoNivel2->setPlainText("Gogeta ha caido. Vuelve a entrar al nivel 2 para reintentar.");
+                if (vidaBlackNivel2 <= 0.0f) {
+                    finalizarNivel2("Gogeta derroto a Goku Black. Vuelve a entrar al nivel 2 para jugar otra vez.");
+                    return;
                 }
             }
 
@@ -1233,15 +1377,190 @@ void MainWindow::actualizarNivel2()
         }
 
         if (bola->terminoVuelo()) {
-            disparosEsquivadosNivel2++;
-            gokuBlack->aprenderTrayectoria(false);
             eliminarBolaBlack(bola);
+
+            if (!esAtaqueEspecial) {
+                pelotasPerdidasNivel2++;
+                gokuBlack->aprenderTrayectoria(false);
+
+                if (nivel2DificilActivo && pelotasAtrapadasNivel2 > 0) {
+                    pelotasAtrapadasNivel2 = 0;
+                }
+
+                if (pelotasPerdidasNivel2 >= 3) {
+                    pelotasPerdidasNivel2 = 0;
+                    carrerasBlackNivel2++;
+
+                    if (nivel2DificilActivo) {
+                        aplicarDanioGogetaNivel2(12.0f);
+                    }
+                }
+            }
+
+            actualizarHUD();
             actualizarTextoNivel2();
+
+            if (carrerasBlackNivel2 >= 3) {
+                finalizarNivel2("Goku Black gana con 3 carreras. Vuelve a entrar al nivel 2 para reintentar.");
+                return;
+            }
+
+            if (nivel2DificilActivo) {
+                if (vidaGogetaNivel2 <= 0.0f) {
+                    finalizarNivel2("Goku Black vacio la vida de Gogeta. Vuelve a entrar al nivel 2 para reintentar.");
+                    return;
+                }
+
+                if (vidaBlackNivel2 <= 0.0f) {
+                    finalizarNivel2("Gogeta derroto a Goku Black. Vuelve a entrar al nivel 2 para jugar otra vez.");
+                    return;
+                }
+            }
         }
     }
 
     if (nivel2Activo && bolasBlack.isEmpty()) {
         programarSiguienteLanzamientoBlack();
+    }
+}
+
+void MainWindow::actualizarBlackDificil(int dtMs)
+{
+    if (!nivel2DificilActivo || gokuBlack == nullptr || gogeta == nullptr || scene == nullptr) {
+        return;
+    }
+
+    tiempoMovimientoBlackDificilMs += dtMs;
+    tiempoAtaqueEspecialBlackMs += dtMs;
+
+    if (tiempoMovimientoBlackDificilMs >= 850) {
+        tiempoMovimientoBlackDificilMs = 0;
+
+        if (QRandomGenerator::global()->bounded(100) < 55) {
+            const qreal posicionX = scene->sceneRect().right() - 160.0;
+            const qreal posicionActualYBlack = gokuBlack->getSprite()->pos().y();
+            const qreal destinoY = qBound(scene->sceneRect().top() + 120.0,
+                                          posicionActualGogetaY - 40.0,
+                                          scene->sceneRect().bottom() - 220.0);
+            qreal nuevaY = posicionActualYBlack + (destinoY - posicionActualYBlack) * 0.45;
+
+            if (nuevaY < posicionActualYBlack) {
+                gokuBlack->getSprite()->cambiarSprite(":/images/sprites/black_dificil_vuelo.png", 1);
+            }
+            else {
+                gokuBlack->getSprite()->cambiarSprite(":/images/sprites/black_dificil_bajada.png", 1);
+            }
+
+            gokuBlack->setPos(posicionX, nuevaY);
+
+            QTimer::singleShot(220, this, [this]() {
+                if (!nivel2Activo || !nivel2DificilActivo || gokuBlack == nullptr) {
+                    return;
+                }
+
+                gokuBlack->getSprite()->cambiarSprite(":/images/sprites/black_dificil_quieto.png", 1);
+                gokuBlack->getSprite()->reiniciarAnimacion();
+            });
+        }
+    }
+
+    if (tiempoAtaqueEspecialBlackMs >= 4200) {
+        tiempoAtaqueEspecialBlackMs = 0;
+        lanzarAtaqueEspecialBlack();
+    }
+}
+
+void MainWindow::lanzarAtaqueEspecialBlack()
+{
+    if (!nivel2Activo || !nivel2DificilActivo || nivel2EnPausa || gokuBlack == nullptr || gogeta == nullptr || scene == nullptr) {
+        return;
+    }
+
+    gokuBlack->getSprite()->cambiarSprite(":/images/sprites/black_dificil_ataque.png", 10);
+    gokuBlack->getSprite()->reiniciarAnimacion();
+
+    for (int frame = 1; frame < 10; frame++) {
+        QTimer::singleShot(frame * 55, this, [this]() {
+            if (!nivel2Activo || !nivel2DificilActivo || gokuBlack == nullptr) {
+                return;
+            }
+
+            gokuBlack->getSprite()->avanzarFrame();
+        });
+    }
+
+    QTimer::singleShot(180, this, [this]() {
+        if (!nivel2Activo || !nivel2DificilActivo || nivel2EnPausa || scene == nullptr || gokuBlack == nullptr || gogeta == nullptr) {
+            return;
+        }
+
+        QPointF posicionInicial = gokuBlack->getSprite()->sceneBoundingRect().center();
+        QPointF destino = gogeta->sceneBoundingRect().center();
+        Proyectil *rafaga = nullptr;
+
+        if (!bolasBlackDisponibles.isEmpty()) {
+            rafaga = bolasBlackDisponibles.takeLast();
+            rafaga->reiniciar(posicionInicial, ":/images/sprites/rafaga_black_dificil.png");
+        }
+        else {
+            rafaga = new Proyectil(scene, ":/images/sprites/rafaga_black_dificil.png", posicionInicial);
+        }
+
+        rafaga->configurarAtaque(6.8f, 4.0f);
+        rafaga->iniciarBateo(destino.x(), destino.y());
+        bolasBlack.append(rafaga);
+    });
+
+    QTimer::singleShot(620, this, [this]() {
+        if (!nivel2Activo || !nivel2DificilActivo || gokuBlack == nullptr) {
+            return;
+        }
+
+        gokuBlack->getSprite()->cambiarSprite(":/images/sprites/black_dificil_quieto.png", 1);
+        gokuBlack->getSprite()->reiniciarAnimacion();
+    });
+}
+
+void MainWindow::actualizarKamehamehaGogeta(int dtMs)
+{
+    if (!gogetaKamehamehaActivo || gogeta == nullptr) {
+        return;
+    }
+
+    tiempoAnimacionGogetaMs += dtMs;
+
+    if (gogeta->getFrameActual() < gogeta->getTotalFrames() - 1) {
+        while (tiempoAnimacionGogetaMs >= 90 && gogeta->getFrameActual() < gogeta->getTotalFrames() - 1) {
+            tiempoAnimacionGogetaMs -= 90;
+            gogeta->avanzarFrame();
+        }
+    }
+    else {
+        if (!danioKamehamehaAplicado) {
+            aplicarDanioBlackNivel2(38.0f);
+            danioKamehamehaAplicado = true;
+            actualizarHUD();
+            actualizarTextoNivel2();
+
+            if (vidaBlackNivel2 <= 0.0f) {
+                finalizarNivel2("Gogeta derroto a Goku Black. Vuelve a entrar al nivel 2 para jugar otra vez.");
+                return;
+            }
+        }
+
+        tiempoRetencionKamehamehaMs += dtMs;
+
+        if (tiempoRetencionKamehamehaMs >= 420) {
+            gogetaKamehamehaActivo = false;
+            tiempoRetencionKamehamehaMs = 0;
+            tiempoAnimacionGogetaMs = 0;
+            danioKamehamehaAplicado = false;
+            rutaSpriteGogetaActual = rutaSpriteGogetaDireccion;
+            gogeta->cambiarSprite(rutaSpriteGogetaActual, 3);
+            gogeta->fijarTamanoVisual(anchoVisualGogeta, altoVisualGogeta);
+            gogeta->reiniciarAnimacion();
+            gogeta->setPos(posicionGogetaX, posicionActualGogetaY);
+        }
     }
 }
 
@@ -1345,6 +1664,29 @@ void MainWindow::eliminarBola(Proyectil *bola)
 
 void MainWindow::actualizarHUD()
 {
+    if (nivel2DificilActivo) {
+        const qreal xBlack = scene != nullptr
+                                 ? scene->sceneRect().width() - anchoBarraVida - 20
+                                 : 20;
+
+        actualizarBarraVida(rellenoVidaVegito,
+                            textoVidaVegito,
+                            20,
+                            48,
+                            "Gogeta",
+                            vidaGogetaNivel2,
+                            vidaMaximaGogetaNivel2);
+
+        actualizarBarraVida(rellenoVidaFreezer,
+                            textoVidaFreezer,
+                            xBlack,
+                            48,
+                            "Black",
+                            vidaBlackNivel2,
+                            vidaMaximaBlackNivel2);
+        return;
+    }
+
     if (vegito != nullptr) {
         actualizarBarraVida(rellenoVidaVegito,
                             textoVidaVegito,
@@ -1420,12 +1762,24 @@ void MainWindow::moveFig()
 
 void MainWindow::iniciarVariablesNivel2()
 {
-    vidaGogeta = 3;
-    tiempoSaltoGogetaMs = 0;
+    posicionActualGogetaY = posicionGogetaY;
+    velocidadVerticalGogeta = 0.0;
+    saltosUsadosGogeta = 0;
     tiempoAnimacionGogetaMs = 0;
-    disparosEsquivadosNivel2 = 0;
+    tiempoRetencionKamehamehaMs = 0;
+    tiempoMovimientoBlackDificilMs = 0;
+    tiempoAtaqueEspecialBlackMs = 0;
+    pelotasAtrapadasNivel2 = 0;
+    pelotasPerdidasNivel2 = 0;
+    outsNivel2 = 0;
+    carrerasBlackNivel2 = 0;
+    cargaKamehamehaNivel2 = 0;
     gogetaSaltando = false;
+    gogetaKamehamehaActivo = false;
+    danioKamehamehaAplicado = false;
     esperandoLanzamientoBlack = false;
+    vidaGogetaNivel2 = vidaMaximaGogetaNivel2;
+    vidaBlackNivel2 = vidaMaximaBlackNivel2;
 
     while (!bolasBlack.isEmpty()) {
         eliminarBolaBlack(bolasBlack.last());
@@ -1444,6 +1798,16 @@ void MainWindow::iniciarVariablesNivel2()
     }
 
     textoEstadoNivel2->setVisible(true);
+
+    if (nivel2DificilActivo) {
+        crearHUDNivel2Dificil();
+        setVisibleHUDVida(true);
+        actualizarHUD();
+    }
+    else {
+        setVisibleHUDVida(false);
+    }
+
     actualizarTextoNivel2();
 }
 
@@ -1454,7 +1818,9 @@ void MainWindow::programarSiguienteLanzamientoBlack()
     }
 
     esperandoLanzamientoBlack = true;
-    const int esperaMs = QRandomGenerator::global()->bounded(650, 1100);
+    const int esperaMs = nivel2DificilActivo
+                             ? QRandomGenerator::global()->bounded(520, 900)
+                             : QRandomGenerator::global()->bounded(650, 1100);
 
     QTimer::singleShot(esperaMs, this, [this]() {
         esperandoLanzamientoBlack = false;
@@ -1477,7 +1843,9 @@ void MainWindow::lanzarBolaBlack()
 
     const QRectF recta = scene->sceneRect();
     const qreal posicionBaseX = recta.right() - 160.0;
-    const qreal posicionBaseY = posicionGogetaY - 40.0;
+    const qreal posicionBaseY = nivel2DificilActivo
+                                    ? gokuBlack->getSprite()->pos().y()
+                                    : posicionGogetaY - 40.0;
 
     gokuBlack->setPos(posicionBaseX, posicionBaseY);
 
@@ -1528,16 +1896,37 @@ void MainWindow::eliminarBolaBlack(Proyectil *bola)
 
 void MainWindow::actualizarSaltoGogeta(int dtMs)
 {
-    if (!gogetaSaltando || gogeta == nullptr) {
+    if (gogeta == nullptr) {
         return;
     }
 
-    tiempoSaltoGogetaMs += dtMs;
-    tiempoAnimacionGogetaMs += dtMs;
+    if (!gogetaSaltando) {
+        if (!gogetaKamehamehaActivo) {
+            posicionActualGogetaY = posicionGogetaY;
+            gogeta->setPos(posicionGogetaX, posicionActualGogetaY);
+        }
+        return;
+    }
 
-    const qreal progreso = qMin(1.0, static_cast<qreal>(tiempoSaltoGogetaMs) / duracionSaltoGogetaMs);
-    const qreal altura = 55.0 * qSin(progreso * M_PI);
-    gogeta->setPos(posicionGogetaX, posicionGogetaY - altura);
+    const qreal gravedad = 0.85;
+    velocidadVerticalGogeta += gravedad;
+    posicionActualGogetaY += velocidadVerticalGogeta;
+
+    if (posicionActualGogetaY >= posicionGogetaY) {
+        posicionActualGogetaY = posicionGogetaY;
+        velocidadVerticalGogeta = 0.0;
+        gogetaSaltando = false;
+        saltosUsadosGogeta = 0;
+        tiempoAnimacionGogetaMs = 0;
+        rutaSpriteGogetaActual = rutaSpriteGogetaDireccion;
+        gogeta->cambiarSprite(rutaSpriteGogetaActual, 3);
+        gogeta->fijarTamanoVisual(anchoVisualGogeta, altoVisualGogeta);
+        gogeta->reiniciarAnimacion();
+        gogeta->setPos(posicionGogetaX, posicionActualGogetaY);
+        return;
+    }
+
+    tiempoAnimacionGogetaMs += dtMs;
 
     while (tiempoAnimacionGogetaMs >= tiempoEntreFramesGogetaMs &&
            gogeta->getFrameActual() < gogeta->getTotalFrames() - 1) {
@@ -1545,16 +1934,7 @@ void MainWindow::actualizarSaltoGogeta(int dtMs)
         gogeta->avanzarFrame();
     }
 
-    if (progreso >= 1.0) {
-        gogetaSaltando = false;
-        tiempoSaltoGogetaMs = 0;
-        tiempoAnimacionGogetaMs = 0;
-        rutaSpriteGogetaActual = rutaSpriteGogetaDireccion;
-        gogeta->cambiarSprite(rutaSpriteGogetaActual, 3);
-        gogeta->limpiarTamanoVisualFijo();
-        gogeta->reiniciarAnimacion();
-        gogeta->setPos(posicionGogetaX, posicionGogetaY);
-    }
+    gogeta->setPos(posicionGogetaX, posicionActualGogetaY);
 }
 
 void MainWindow::actualizarTextoNivel2()
@@ -1563,11 +1943,93 @@ void MainWindow::actualizarTextoNivel2()
         return;
     }
 
+    if (nivel2DificilActivo) {
+        textoEstadoNivel2->setPlainText(
+            "Nivel 2 dificil | Outs: " + QString::number(outsNivel2) + "/3"
+            " | Carreras Black: " + QString::number(carrerasBlackNivel2) + "/3"
+            "\nRacha atrapadas: " + QString::number(pelotasAtrapadasNivel2) + "/3"
+            " | Carga Final Kamehameha: " + QString::number(cargaKamehamehaNivel2) + "/" + QString::number(cargaMaximaKamehamehaNivel2) +
+            "\nA y D para moverte. W para triple salto. Q para disparar."
+            );
+        return;
+    }
+
     textoEstadoNivel2->setPlainText(
-        "Nivel 2 | Vida Gogeta: " + QString::number(vidaGogeta) +
-        " | Disparos esquivados: " + QString::number(disparosEsquivadosNivel2) +
-        "\nA y D para moverte. W para saltar el ataque de Goku Black."
+        "Nivel 2 | Outs Gogeta: " + QString::number(outsNivel2) + "/3"
+        " | Carreras Black: " + QString::number(carrerasBlackNivel2) + "/3"
+        "\nAtrapadas: " + QString::number(pelotasAtrapadasNivel2) + "/3"
+        " | Perdidas: " + QString::number(pelotasPerdidasNivel2) + "/3"
+        "\nA y D para moverte. W para triple salto."
         );
+}
+
+void MainWindow::aplicarDanioGogetaNivel2(qreal dano)
+{
+    vidaGogetaNivel2 -= dano;
+
+    if (vidaGogetaNivel2 < 0.0) {
+        vidaGogetaNivel2 = 0.0;
+    }
+}
+
+void MainWindow::aplicarDanioBlackNivel2(qreal dano)
+{
+    vidaBlackNivel2 -= dano;
+
+    if (vidaBlackNivel2 < 0.0) {
+        vidaBlackNivel2 = 0.0;
+    }
+}
+
+void MainWindow::dispararFinalKamehameha()
+{
+    if (!nivel2Activo || !nivel2DificilActivo || gogeta == nullptr || cargaKamehamehaNivel2 < cargaMaximaKamehamehaNivel2 || gogetaKamehamehaActivo) {
+        return;
+    }
+
+    gogetaKamehamehaActivo = true;
+    danioKamehamehaAplicado = false;
+    tiempoAnimacionGogetaMs = 0;
+    tiempoRetencionKamehamehaMs = 0;
+    cargaKamehamehaNivel2 = 0;
+    rutaSpriteGogetaActual = ":/images/sprites/final_kamehameha.png";
+
+    const QVector<QRectF> framesKamehameha = {
+        QRectF(0, 0, 90, 150),
+        QRectF(90, 0, 90, 150),
+        QRectF(180, 0, 90, 150),
+        QRectF(270, 0, 90, 150),
+        QRectF(360, 0, 90, 150),
+        QRectF(450, 0, 415, 150)
+    };
+
+    gogeta->cambiarSprite(rutaSpriteGogetaActual, framesKamehameha);
+    gogeta->fijarTamanoVisual(140.0, 150.0);
+    gogeta->reiniciarAnimacion();
+    gogeta->setPos(posicionGogetaX, posicionActualGogetaY);
+    actualizarTextoNivel2();
+}
+
+void MainWindow::finalizarNivel2(const QString &mensaje)
+{
+    nivel2EnPausa = true;
+    nivel2Activo = false;
+    esperandoLanzamientoBlack = false;
+    gogetaKamehamehaActivo = false;
+
+    if (timerNivel2 != nullptr) {
+        timerNivel2->stop();
+    }
+
+    while (!bolasBlack.isEmpty()) {
+        eliminarBolaBlack(bolasBlack.last());
+    }
+
+    if (textoEstadoNivel2 != nullptr) {
+        textoEstadoNivel2->setPlainText(mensaje);
+    }
+
+    actualizarHUD();
 }
 
 bool MainWindow::spriteColisionaConProyectil(Sprite *sprite, Proyectil *bola) const
@@ -1627,6 +2089,11 @@ QPointF MainWindow::destinoAleatorioBateo()
 void MainWindow::keyPressEvent(QKeyEvent *e)
 {
     if (nivel2Activo) {
+        if (nivel2DificilActivo && e->key() == Qt::Key_Q) {
+            dispararFinalKamehameha();
+            return;
+        }
+
         if (e->key() == Qt::Key_A) {
             moverGogeta(-20, ":/images/sprites/gogeta_izquierda.png");
             return;
@@ -1705,7 +2172,7 @@ void MainWindow::keyPressEvent(QKeyEvent *e)
 
 void MainWindow::moverGogeta(qreal deltaX, const QString &rutaSprite)
 {
-    if (!nivel2Activo || gogeta == nullptr || scene == nullptr) {
+    if (!nivel2Activo || gogeta == nullptr || scene == nullptr || gogetaKamehamehaActivo) {
         return;
     }
 
@@ -1715,7 +2182,7 @@ void MainWindow::moverGogeta(qreal deltaX, const QString &rutaSprite)
         if (rutaSpriteGogetaActual != rutaSprite) {
             rutaSpriteGogetaActual = rutaSprite;
             gogeta->cambiarSprite(rutaSpriteGogetaActual, 3);
-            gogeta->limpiarTamanoVisualFijo();
+            gogeta->fijarTamanoVisual(anchoVisualGogeta, altoVisualGogeta);
             gogeta->reiniciarAnimacion();
             if (gogeta->getFrameActual() < gogeta->getTotalFrames() - 1) {
                 gogeta->avanzarFrame();
@@ -1739,22 +2206,18 @@ void MainWindow::moverGogeta(qreal deltaX, const QString &rutaSprite)
     }
 
     posicionGogetaX = nuevaX;
-    const qreal progresoSalto = duracionSaltoGogetaMs > 0
-                                    ? qMin(1.0, static_cast<qreal>(tiempoSaltoGogetaMs) / duracionSaltoGogetaMs)
-                                    : 0.0;
-    const qreal offsetSalto = gogetaSaltando ? 55.0 * qSin(progresoSalto * M_PI) : 0.0;
-    const qreal posicionActualY = posicionGogetaY - offsetSalto;
-    gogeta->setPos(posicionGogetaX, posicionActualY);
+    gogeta->setPos(posicionGogetaX, posicionActualGogetaY);
 }
 
 void MainWindow::saltarGogeta()
 {
-    if (!nivel2Activo || gogeta == nullptr || gogetaSaltando) {
+    if (!nivel2Activo || gogeta == nullptr || saltosUsadosGogeta >= 3 || gogetaKamehamehaActivo) {
         return;
     }
 
     gogetaSaltando = true;
-    tiempoSaltoGogetaMs = 0;
+    saltosUsadosGogeta++;
+    velocidadVerticalGogeta = -12.5;
     tiempoAnimacionGogetaMs = 0;
     rutaSpriteGogetaActual = ":/images/sprites/gogeta_salto.png";
     const QVector<QRectF> framesSalto = {
@@ -1765,10 +2228,12 @@ void MainWindow::saltarGogeta()
         QRectF(304, 0, 40, 100),
         QRectF(356, 0, 52, 100)
     };
+    const qreal anchoSaltoGogeta = 72.0;
+    const qreal altoSaltoGogeta = 120.0;
     gogeta->cambiarSprite(rutaSpriteGogetaActual, framesSalto);
-    gogeta->fijarTamanoVisual(58.0, 99.0);
+    gogeta->fijarTamanoVisual(anchoSaltoGogeta, altoSaltoGogeta);
     gogeta->reiniciarAnimacion();
-    gogeta->setPos(posicionGogetaX, posicionGogetaY);
+    gogeta->setPos(posicionGogetaX, posicionActualGogetaY);
 }
 
 void MainWindow::ajustarFondo()
@@ -1837,16 +2302,26 @@ void MainWindow::resizeEvent(QResizeEvent *event)
     }
 
     if (nivel2Activo && gogeta != nullptr) {
-        posicionGogetaY = scene->sceneRect().height() - 135;
-        const qreal progresoSalto = duracionSaltoGogetaMs > 0
-                                        ? qMin(1.0, static_cast<qreal>(tiempoSaltoGogetaMs) / duracionSaltoGogetaMs)
-                                        : 0.0;
-        const qreal offsetSalto = gogetaSaltando ? 55.0 * qSin(progresoSalto * M_PI) : 0.0;
-        gogeta->setPos(posicionGogetaX, posicionGogetaY - offsetSalto);
+        posicionGogetaY = scene->sceneRect().height() - 170;
+
+        if (!gogetaSaltando) {
+            posicionActualGogetaY = posicionGogetaY;
+        }
+
+        gogeta->setPos(posicionGogetaX, posicionActualGogetaY);
     }
 
     if (nivel2Activo && gokuBlack != nullptr) {
-        gokuBlack->setPos(scene->sceneRect().right() - 160.0, posicionGogetaY - 40.0);
+        const qreal nuevaPosicionBlackY = nivel2DificilActivo
+                                              ? qMin(gokuBlack->getSprite()->pos().y(), scene->sceneRect().bottom() - 220.0)
+                                              : posicionGogetaY - 40.0;
+        gokuBlack->setPos(scene->sceneRect().right() - 160.0, nuevaPosicionBlackY);
+    }
+
+    if (nivel2Activo && nivel2DificilActivo) {
+        crearHUDNivel2Dificil();
+        setVisibleHUDVida(true);
+        actualizarHUD();
     }
 
     ajustarFondo();
