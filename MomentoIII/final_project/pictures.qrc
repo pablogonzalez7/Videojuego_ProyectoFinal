@@ -1,12 +1,14 @@
 <RCC>
     <qresource prefix="/">
         <file>images/sprites/bateo_vegito.png</file>
-        <file>images/backgrounds/background_main.jpg</file>
+        <file>images/backgrounds/background_main.png</file>
         <file>images/backgrounds/botonInicio.png</file>
         <file>images/backgrounds/titulo.png</file>
         <file>images/backgrounds/nivel1.png</file>
         <file>images/backgrounds/nivel2.png</file>
-        <file>images/audios/gt-dragonball-intro.mp3</file>
+        <file>images/audios/new_main_audio.mp3</file>
+        <file>images/audios/muchedumbre_estadio.mp3</file>
+        <file>images/audios/final_kamehameha.mp3</file>
         <file>images/audios/vegito-yosha.mp3</file>
         <file>images/audios/sonido_bateo_muchedumbre.wav</file>
         <file>images/sprites/vegitoBateoQuieto.png</file>
@@ -20,6 +22,7 @@
         <file>images/sprites/freezerPitcher2.png</file>
         <file>images/sprites/freezerPitcher3.png</file>
         <file>images/sprites/black_lanzamiento.png</file>
+        <file alias="images/sprites/black_lanzamiento_dificil.png">images/sprites/black_lanzamiento_dificl.png</file>
         <file>images/sprites/black_quieto.png</file>
         <file>images/sprites/black_dificil_quieto.png</file>
         <file>images/sprites/rafaga_black_dificil.png</file>
@@ -28,11 +31,13 @@
         <file>images/sprites/black_dificil_bajada.png</file>
         <file>images/sprites/rafaga_black_dificil.png</file>
         <file>images/sprites/final_kamehameha.png</file>
+        <file>images/sprites/rafaga_final_kamehameha.png</file>
         <file>images/sprites/bolaFreezer.png</file>
         <file>images/sprites/bolaFreezer2.png</file>
         <file>images/sprites/bolafreezer3.png</file>
         <file alias="images/sprites/bolaBlack_actualizada.png">images/sprites/bolaBlack1.png</file>
         <file>images/sprites/vegito_impacto.png</file>
         <file>images/sprites/freezer_impacto.png</file>
+        <file>images/sprites/tajo_espada.png</file>
     </qresource>
 </RCC>

@@ -49,8 +49,6 @@ Proyectil::Proyectil(QGraphicsScene *scene,
     // la bola hacia un lado cuando cambia de tamaño.
     proyectil->setTransformOriginPoint(proyectil->boundingRect().center());
 
-    vx = 0;
-    vy = 5;
     activa = true;
 
     estado = LanzadaPorFreezer;
@@ -63,12 +61,14 @@ Proyectil::Proyectil(QGraphicsScene *scene,
         hasta que cae en el campo.
     */
     duracionVuelo = 3.0;
+    duracionVueloBase = duracionVuelo;
 
     inicioX = posicionInicial.x();
     inicioY = posicionInicial.y();
 
     destinoX = inicioX;
     destinoY = inicioY;
+    limiteSueloVuelo = posicionInicial.y();
 
     xBaseOscilacion = posicionInicial.x();
 
@@ -91,15 +91,15 @@ Proyectil::Proyectil(QGraphicsScene *scene,
         Esto evita que todos los lanzamientos parabólicos sean idénticos.
     */
     fuerzaCurva = QRandomGenerator::global()->bounded(15, 36);
+    amplitudArcoVuelo = 90.0;
+    desvioHorizontalVuelo = 0.0;
 
     ataqueActual.velocidad = 3.6f;
     ataqueActual.dano = 1.0f;
+    valorPuntaje = 1;
+    bonificacionAroActiva = false;
+    multiplicadorEscala = 1.0;
 
-    timerP = new QTimer(this);
-
-    // Este timer quedó preparado para mover el proyectil de forma autónoma si
-    // en el futuro se desacopla más lógica de MainWindow.
-    connect(timerP, &QTimer::timeout, this, &Proyectil::movProyectil);
 }
 
 Proyectil::~Proyectil()
@@ -116,29 +116,6 @@ Proyectil::~Proyectil()
         delete proyectil;
         proyectil = nullptr;
     }
-}
-
-void Proyectil::iniciarTimerProyectil()
-{
-    // Frecuencia cercana a 60 FPS para movimiento fluido.
-    timerP->start(16);
-}
-
-void Proyectil::detenerTimerProyectil()
-{
-    // Se puede pausar el movimiento interno si el control se hace externamente.
-    timerP->stop();
-}
-
-void Proyectil::movProyectil()
-{
-    /*
-        Movimiento por defecto.
-
-        En la lógica actual del juego, MainWindow llama directamente
-        a moverLanzamiento(), pero se conserva este método.
-    */
-    moverLanzamiento(4, false);
 }
 
 void Proyectil::moverLanzamiento(float velocidad, bool oscilatorio)
@@ -204,6 +181,21 @@ void Proyectil::iniciarBateo(qreal nuevoDestinoX, qreal nuevoDestinoY)
 
     destinoX = nuevoDestinoX;
     destinoY = nuevoDestinoY;
+    limiteSueloVuelo = destinoY;
+
+    if (proyectil->scene() != nullptr) {
+        limiteSueloVuelo = qMax(destinoY, proyectil->scene()->sceneRect().bottom() - 150.0);
+    }
+
+    const bool esRafagaBlack = rutaSprite.contains("rafaga_black_dificil");
+    const bool esProyectilBlack = rutaSprite.contains("bolaBlack") || esRafagaBlack;
+    const qreal factorDuracion = esRafagaBlack
+                                     ? 0.94 + QRandomGenerator::global()->bounded(12) / 100.0
+                                     : 0.82 + QRandomGenerator::global()->bounded(37) / 100.0;
+
+    duracionVuelo = duracionVueloBase * factorDuracion;
+    amplitudArcoVuelo = esRafagaBlack ? 0.0 : QRandomGenerator::global()->bounded(65, 121);
+    desvioHorizontalVuelo = esRafagaBlack ? 0.0 : QRandomGenerator::global()->bounded(-42, 43);
 }
 
 void Proyectil::reiniciar(QPointF posicionInicial, const QString &rutaImagen)
@@ -234,10 +226,12 @@ void Proyectil::reiniciar(QPointF posicionInicial, const QString &rutaImagen)
 
     tiempo = 0;
     tiempoVuelo = 0;
+    duracionVuelo = duracionVueloBase;
     inicioX = posicionInicial.x();
     inicioY = posicionInicial.y();
     destinoX = inicioX;
     destinoY = inicioY;
+    limiteSueloVuelo = posicionInicial.y();
     xBaseOscilacion = posicionInicial.x();
 
     int lado = QRandomGenerator::global()->bounded(0, 2);
@@ -250,6 +244,11 @@ void Proyectil::reiniciar(QPointF posicionInicial, const QString &rutaImagen)
     }
 
     fuerzaCurva = QRandomGenerator::global()->bounded(15, 36);
+    amplitudArcoVuelo = 90.0;
+    desvioHorizontalVuelo = 0.0;
+    valorPuntaje = 1;
+    bonificacionAroActiva = false;
+    multiplicadorEscala = 1.0;
 }
 
 void Proyectil::desactivar()
@@ -258,6 +257,9 @@ void Proyectil::desactivar()
     estado = Caida;
     tiempo = 0;
     tiempoVuelo = 0;
+    valorPuntaje = 1;
+    bonificacionAroActiva = false;
+    multiplicadorEscala = 1.0;
     proyectil->setScale(1.0);
     proyectil->setVisible(false);
 }
@@ -266,6 +268,9 @@ void Proyectil::configurarAtaque(float velocidad, float dano)
 {
     ataqueActual.velocidad = velocidad;
     ataqueActual.dano = dano;
+    valorPuntaje = 1;
+    bonificacionAroActiva = false;
+    multiplicadorEscala = 1.0;
 
     /*
         Los ataques especiales de Black deben sentirse más rápidos
@@ -273,16 +278,37 @@ void Proyectil::configurarAtaque(float velocidad, float dano)
         y el sprite usado.
     */
     if (dano >= 3.0f || rutaSprite.contains("rafaga_black_dificil")) {
-        duracionVuelo = 1.25f;
+        duracionVueloBase = qMax(0.82f, 1.30f - velocidad * 0.05f);
     }
     else {
-        duracionVuelo = 3.0f;
+        duracionVueloBase = qBound(1.75f, 3.15f - velocidad * 0.18f, 2.65f);
     }
+
+    duracionVuelo = duracionVueloBase;
 }
 
 void Proyectil::actualizarBateo(float dt)
 {
     if (estado != BateadaPorVegito) {
+        return;
+    }
+
+    const bool esRafagaBlack = rutaSprite.contains("rafaga_black_dificil");
+    const bool esProyectilBlack = rutaSprite.contains("bolaBlack") || esRafagaBlack;
+
+    if (esRafagaBlack) {
+        const qreal avanceHorizontal = qMax<qreal>(9.0, ataqueActual.velocidad * 3.0);
+        const qreal nuevaX = proyectil->pos().x() - avanceHorizontal;
+        const qreal nuevaY = inicioY;
+
+        proyectil->setPos(nuevaX, nuevaY);
+        proyectil->setScale(multiplicadorEscala);
+
+        if (proyectil->scene() != nullptr &&
+            proyectil->sceneBoundingRect().right() <= proyectil->scene()->sceneRect().left()) {
+            estado = Caida;
+        }
+
         return;
     }
 
@@ -294,17 +320,16 @@ void Proyectil::actualizarBateo(float dt)
         t = 1.0;
     }
 
+    const qreal senoVuelo = qSin(3.1416 * t);
     qreal nuevaX = inicioX + (destinoX - inicioX) * t;
+    nuevaX += desvioHorizontalVuelo * senoVuelo * (1.0 - 0.30 * t);
     qreal nuevaY = inicioY + (destinoY - inicioY) * t;
-
-    const bool esRafagaBlack = rutaSprite.contains("rafaga_black_dificil");
 
     /*
         Las pelotas normales mantienen un arco más visible.
         La ráfaga especial usa un arco menor para sentirse más directa.
     */
-    qreal arcoParabolico = esRafagaBlack ? 35.0 * qSin(3.1416 * t)
-                                         : 90.0 * qSin(3.1416 * t);
+    qreal arcoParabolico = amplitudArcoVuelo * senoVuelo;
 
     nuevaY -= arcoParabolico;
 
@@ -321,10 +346,20 @@ void Proyectil::actualizarBateo(float dt)
         }
     }
 
-    proyectil->setPos(nuevaX, nuevaY);
-    proyectil->setScale(escala);
+    if (esProyectilBlack && t >= 1.0f) {
+        nuevaX = destinoX;
+        nuevaY = qMin(limiteSueloVuelo,
+                      proyectil->pos().y() + qMax<qreal>(4.8, ataqueActual.velocidad * 1.35));
+        escala = 1.0;
+    }
 
-    if (tiempoVuelo >= duracionVuelo) {
+    proyectil->setPos(nuevaX, nuevaY);
+    proyectil->setScale(escala * multiplicadorEscala);
+
+    if (!esProyectilBlack && t >= 1.0f) {
+        estado = Caida;
+    }
+    else if (esProyectilBlack && t >= 1.0f && centro().y() >= limiteSueloVuelo - 1.0) {
         estado = Caida;
     }
 }
@@ -391,4 +426,21 @@ float Proyectil::getVelocidadAtaque() const
 float Proyectil::getDanoAtaque() const
 {
     return ataqueActual.dano;
+}
+
+int Proyectil::getValorPuntaje() const
+{
+    return valorPuntaje;
+}
+
+bool Proyectil::tieneBonificacionAro() const
+{
+    return bonificacionAroActiva;
+}
+
+void Proyectil::activarBonificacionAro()
+{
+    bonificacionAroActiva = true;
+    valorPuntaje = 2;
+    multiplicadorEscala = 2.0;
 }

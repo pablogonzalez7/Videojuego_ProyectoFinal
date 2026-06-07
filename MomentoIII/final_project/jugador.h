@@ -22,17 +22,12 @@ public:
     bool bolaEnZonaBateo(Proyectil *bola) const;
     bool batear(Proyectil *bola, const QPointF &destino);
     void controlarProyectil(Proyectil *bola, int tecla);
-    void activarHabilidad();
 
     void setPuedeBatear(bool puede);
     bool getPuedeBatear() const;
 
-    void setBolaControlada(Proyectil *bola);
-    Proyectil *getBolaControlada() const;
-
 private:
     Proyectil *bolaControlada;
-    float fuerzaBateo;
     bool puedeBatear;
 };
 

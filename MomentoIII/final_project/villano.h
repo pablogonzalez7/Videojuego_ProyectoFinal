@@ -34,27 +34,18 @@ public:
     void configurarAtaques(const QList<Ataque> &nuevosAtaques);
     Ataque elegirAtaque();
     void reproducirAtaqueActual();
-
-    void percibir(bool aciertoJugador);
     void percibirPosicionJugador(const QPointF &posicionJugador);
     short razonar();
     QPointF razonarDestinoLejano(const QRectF &limitesEscena) const;
     Proyectil *actuar(QGraphicsScene *scene, QPointF posicionInicial);
     void aprender(bool aciertoJugador);
-    void aprenderTrayectoria(bool impactoJugador);
-
-    float getVelocidadAtaque() const;
-    short getTipoAtaqueActual() const;
 
 private:
     QList<Ataque> ataques;
     QList<int> aciertosPorAtaque;
     QList<int> fallosPorAtaque;
-    bool ultimoAciertoJugador;
     QPointF ultimaPosicionJugador;
     short tipoAtaqueActual;
-    float velocidadAtaque;
-    int sesgoCentro;
 };
 
 #endif // VILLANO_H
