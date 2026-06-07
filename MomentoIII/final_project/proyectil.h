@@ -5,7 +5,6 @@
 #include <QString>
 #include <QGraphicsScene>
 #include <QGraphicsPixmapItem>
-#include <QTimer>
 #include <QPointF>
 
 /*
@@ -66,26 +65,6 @@ public:
         Elimina la bola de la escena y libera memoria.
     */
     ~Proyectil();
-
-    /*
-        Inicia el timer interno del proyectil.
-
-        En esta versión casi todo el movimiento se maneja desde MainWindow,
-        pero se deja por si se necesita usar el timer propio del proyectil.
-    */
-    void iniciarTimerProyectil();
-
-    /*
-        Detiene el timer interno del proyectil.
-    */
-    void detenerTimerProyectil();
-
-    /*
-        Movimiento básico usado por el timer interno.
-
-        Llama a moverLanzamiento con valores por defecto.
-    */
-    void movProyectil();
 
     /*
         Mueve la bola cuando viene desde Freezer.
@@ -168,17 +147,13 @@ public:
     float getVelocidadAtaque() const;
 
     float getDanoAtaque() const;
+    int getValorPuntaje() const;
+    bool tieneBonificacionAro() const;
+    void activarBonificacionAro();
 
 private:
     // Item gráfico que representa visualmente la bola.
     QGraphicsPixmapItem *proyectil;
-
-    // Timer propio del proyectil.
-    QTimer *timerP;
-
-    // Velocidades base. Se dejan por si se requieren después.
-    float vx;
-    float vy;
 
     // Estado actual de la bola.
     EstadoProyectil estado;
@@ -191,6 +166,7 @@ private:
 
     // Duración del vuelo de la bola bateada.
     float duracionVuelo;
+    float duracionVueloBase;
 
     // Posición inicial del vuelo después del batazo.
     qreal inicioX;
@@ -199,6 +175,7 @@ private:
     // Posición final o destino donde caerá la bola.
     qreal destinoX;
     qreal destinoY;
+    qreal limiteSueloVuelo;
 
     // Centro horizontal usado para movimientos parabólicos u oscilatorios.
     qreal xBaseOscilacion;
@@ -208,6 +185,8 @@ private:
 
     // Qué tanto se curva la bola en el lanzamiento parabólico.
     qreal fuerzaCurva;
+    qreal amplitudArcoVuelo;
+    qreal desvioHorizontalVuelo;
 
     // Indica si la bola se está usando en este momento.
     bool activa;
@@ -217,6 +196,9 @@ private:
 
     // Datos del ataque asociado a esta bola.
     DatosAtaque ataqueActual;
+    int valorPuntaje;
+    bool bonificacionAroActiva;
+    qreal multiplicadorEscala;
 };
 
 #endif // PROYECTIL_H

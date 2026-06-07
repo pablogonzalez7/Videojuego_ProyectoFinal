@@ -1,46 +1,28 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
-#include <QBrush>
-#include <QColor>
-#include <QDebug>
-#include <QFont>
-#include <QGraphicsEllipseItem>
-#include <QGraphicsItem>
-#include <QGraphicsLineItem>
-#include <QGraphicsPathItem>
-#include <QGraphicsPixmapItem>
-#include <QGraphicsRectItem>
-#include <QGraphicsScene>
-#include <QGraphicsTextItem>
-#include <QGuiApplication>
-#include <QKeyEvent>
-#include <QLabel>
 #include <QList>
 #include <QMainWindow>
-#include <QMediaPlayer>
 #include <QPainterPath>
-#include <QPen>
 #include <QPointF>
-#include <QPushButton>
-#include <QRandomGenerator>
-#include <QRect>
-#include <QResizeEvent>
-#include <QScreen>
 #include <QString>
-#include <QTimer>
-#include <QUrl>
-#include <QPolygonF>
-#include <QtMath>
 
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
-#include <QAudioOutput>
-#endif
-
-#include "jugador.h"
+#include "items.h"
 #include "villano.h"
-#include "proyectil.h"
-#include "obstaculo.h"
+
+class Jugador;
+class Proyectil;
+class QAudioOutput;
+class QGraphicsPixmapItem;
+class QGraphicsScene;
+class QGraphicsTextItem;
+class QKeyEvent;
+class QLabel;
+class QMediaPlayer;
+class QPushButton;
+class QResizeEvent;
+class QTimer;
+class Sprite;
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -68,11 +50,10 @@ public:
     explicit MainWindow(QWidget *parent = nullptr);
     ~MainWindow() override;
 
-    void setEscena(short numEscena);
-
 protected:
     void resizeEvent(QResizeEvent *event) override;
     void keyPressEvent(QKeyEvent *e) override;
+    void keyReleaseEvent(QKeyEvent *e) override;
 
 private slots:
     void on_botonInicio_clicked();
@@ -85,24 +66,10 @@ private slots:
     void iniciarNivel2Facil();
     void iniciarNivel2Dificil();
 
-public slots:
-    void moveFig();
-
 private:
     Ui::MainWindow *ui;
     QGraphicsScene *scene;
     QGraphicsPixmapItem *fondo;
-
-    // Elementos antiguos conservados por compatibilidad.
-    QGraphicsTextItem *text;
-    QGraphicsLineItem *l1;
-    QGraphicsEllipseItem *e1;
-    QGraphicsItem *figEn;
-    QGraphicsItem *fig;
-
-    QTimer *timer;
-    QTimer *cronometro;
-    QTimer *timerFr;
     QTimer *timerNivel1;
 
     QString rutaFondoActual;
@@ -110,11 +77,15 @@ private:
     QMediaPlayer *musicaInicio;
     QMediaPlayer *audioVegitoYosha;
     QMediaPlayer *audioBatazoMuchedumbre;
+    QMediaPlayer *audioAmbienteEstadio;
+    QMediaPlayer *audioFinalKamehameha;
 
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
     QAudioOutput *salidaAudioInicio;
     QAudioOutput *salidaAudioVegitoYosha;
     QAudioOutput *salidaAudioBatazoMuchedumbre;
+    QAudioOutput *salidaAudioAmbienteEstadio;
+    QAudioOutput *salidaAudioFinalKamehameha;
 #endif
 
     QPushButton *botonFacil;
@@ -132,42 +103,29 @@ private:
     Villano *freezer;
     Villano *gokuBlack;
     Sprite *gogeta;
-
-    QGraphicsRectItem *fondoVidaVegito;
-    QGraphicsRectItem *rellenoVidaVegito;
-    QGraphicsRectItem *bordeVidaVegito;
-    QGraphicsTextItem *textoVidaVegito;
-
-    QGraphicsRectItem *fondoVidaFreezer;
-    QGraphicsRectItem *rellenoVidaFreezer;
-    QGraphicsRectItem *bordeVidaFreezer;
-    QGraphicsTextItem *textoVidaFreezer;
+    Items barraVidaJugador;
+    Items barraVidaEnemigo;
+    Items marcadorNivel2Jugador;
+    Items marcadorNivel2Enemigo;
+    Items aroNivel2;
+    Items zonaDanioBajo;
+    Items zonaDanioMedio;
+    Items zonaDanioAlto;
+    Items mensajeTransicionNivel1;
+    QGraphicsPixmapItem *rafagaFinalKamehameha;
 
     QGraphicsTextItem *textoEstadoKaioken;
     QGraphicsTextItem *textoEstadoNivel2;
-    qreal anchoBarraVida;
-    qreal altoBarraVida;
 
-    Proyectil *bolaFreezer;
     Proyectil *bolaControlada;
     QList<Proyectil*> bolasFreezer;
     QList<Proyectil*> bolasDisponibles;
     QList<Proyectil*> bolasBlack;
     QList<Proyectil*> bolasBlackDisponibles;
-    QList<Obstaculo*> obstaculos;
-    QList<QGraphicsPathItem*> debugZonas;
-
-    QPainterPath zonaDanioBajo;
-    QPainterPath zonaDanioMedio;
-    QPainterPath zonaDanioAlto;
 
     float rachaDanio;
     int bolasPendientesPorLanzar;
     float velocidadFreezer;
-    float x;
-    float y;
-    float ancho;
-    float alto;
     DificultadJuego dificultadSeleccionada;
     QList<Villano::Ataque> ataquesFreezer;
 
@@ -182,6 +140,9 @@ private:
     bool nivel2DificilActivo;
     bool gogetaKamehamehaActivo;
     bool danioKamehamehaAplicado;
+    bool rafagaFinalKamehamehaLanzada;
+    bool moverGogetaIzquierdaActivo;
+    bool moverGogetaDerechaActivo;
     QString rutaSpriteGogetaActual;
     QString rutaSpriteGogetaDireccion;
     qreal posicionGogetaX;
@@ -206,6 +167,8 @@ private:
     int carrerasBlackNivel2;
     int cargaKamehamehaNivel2;
     int cargaMaximaKamehamehaNivel2;
+    qreal velocidadMovimientoGogeta;
+    qreal velocidadRafagaFinalKamehameha;
     QTimer *timerNivel2;
 
     void mostrarMenuInicio();
@@ -234,14 +197,16 @@ private:
     void detenerAudioInicio();
     void iniciarAudiosBatazo();
     void reproducirAudiosBatazo();
+    void iniciarAudioAmbienteEstadio();
+    void detenerAudioAmbienteEstadio();
+    void reproducirAudioFinalKamehameha();
+    void mostrarEfectoTajoEspada();
     void configurarAtaquesFreezer();
 
     void configurarZonasBateo();
-    void limpiarZonasDebug();
     void crearHUDNivel1();
     void crearHUDNivel2Dificil();
-    void crearBarraVida(QGraphicsRectItem *&fondoBarra,QGraphicsRectItem *&rellenoBarra,QGraphicsRectItem *&bordeBarra,QGraphicsTextItem *&textoBarra,qreal x,qreal y,const QString &etiqueta,const QColor &colorRelleno);
-    void actualizarBarraVida(QGraphicsRectItem *rellenoBarra,QGraphicsTextItem *textoBarra,qreal x,qreal y,const QString &etiqueta,float vidaActual,float vidaMaxima);
+    void crearMarcadoresNivel2();
     void setVisibleHUDVida(bool visible);
     void destruirHUDVida();
     void actualizarHUD();
@@ -255,14 +220,16 @@ private:
     void actualizarSaltoGogeta(int dtMs);
     void actualizarBlackDificil(int dtMs);
     void actualizarKamehamehaGogeta(int dtMs);
+    void actualizarRafagaFinalKamehameha();
     void actualizarTextoNivel2();
     void finalizarNivel2(const QString &mensaje);
     void aplicarDanioGogetaNivel2(qreal dano);
     void aplicarDanioBlackNivel2(qreal dano);
+    void actualizarBonificacionAro(Proyectil *bola, bool esAtaqueEspecial);
     void dispararFinalKamehameha();
+    void limpiarRafagaFinalKamehameha();
     bool spriteColisionaConProyectil(Sprite *sprite, Proyectil *bola) const;
 
-    Villano::Ataque obtenerAtaqueActual() const;
     Proyectil *obtenerBolaDisponible(const Villano::Ataque &ataque,QPointF posicionInicial);
     bool bolaEnZonaBateo(Proyectil *bola);
     QPointF destinoAleatorioBateo();

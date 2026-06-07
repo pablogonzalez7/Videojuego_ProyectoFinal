@@ -6,7 +6,6 @@ Jugador::Jugador(const QString &rutaQuieto,int framesQuieto,const QString &rutaA
     : Personaje(rutaQuieto,framesQuieto,rutaAtaque,framesAtaque,posX,posY,vidaMaxima)
 {
     bolaControlada = nullptr;
-    fuerzaBateo = 1.0f;
     puedeBatear = true;
 }
 
@@ -59,11 +58,6 @@ void Jugador::controlarProyectil(Proyectil *bola, int tecla)
     }
 }
 
-void Jugador::activarHabilidad()
-{
-    activarEuforia();
-}
-
 void Jugador::setPuedeBatear(bool puede)
 {
     puedeBatear = puede;
@@ -72,14 +66,4 @@ void Jugador::setPuedeBatear(bool puede)
 bool Jugador::getPuedeBatear() const
 {
     return puedeBatear;
-}
-
-void Jugador::setBolaControlada(Proyectil *bola)
-{
-    bolaControlada = bola;
-}
-
-Proyectil *Jugador::getBolaControlada() const
-{
-    return bolaControlada;
 }

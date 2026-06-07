@@ -5,11 +5,8 @@
 Villano::Villano(const QString &rutaQuieto,int framesQuieto,const QString &rutaAtaque,int framesAtaque,qreal posX,qreal posY,float vidaMaxima)
     : Personaje(rutaQuieto,framesQuieto,rutaAtaque,framesAtaque,posX,posY,vidaMaxima)
 {
-    ultimoAciertoJugador = false;
     ultimaPosicionJugador = QPointF(posX, posY);
     tipoAtaqueActual = 0;
-    velocidadAtaque = 3.6f;
-    sesgoCentro = 1;
 }
 
 void Villano::configurarAtaques(const QList<Ataque> &nuevosAtaques)
@@ -28,7 +25,6 @@ Villano::Ataque Villano::elegirAtaque()
 {
     if (ataques.isEmpty()) {
         tipoAtaqueActual = 0;
-        velocidadAtaque = 3.6f;
         return {3.6f,
                 1.0f,
                 ":/images/sprites/bolaFreezer.png",
@@ -43,7 +39,6 @@ Villano::Ataque Villano::elegirAtaque()
         tipoAtaqueActual = 0;
     }
 
-    velocidadAtaque = ataques.at(tipoAtaqueActual).velocidad;
     return ataques.at(tipoAtaqueActual);
 }
 
@@ -65,11 +60,6 @@ void Villano::reproducirAtaqueActual()
     }
 
     iniciarAnimacion({ataque.spriteLanzamiento, ataque.framesLanzamiento}, AnimacionAtaque);
-}
-
-void Villano::percibir(bool aciertoJugador)
-{
-    ultimoAciertoJugador = aciertoJugador;
 }
 
 void Villano::percibirPosicionJugador(const QPointF &posicionJugador)
@@ -111,18 +101,18 @@ QPointF Villano::razonarDestinoLejano(const QRectF &limitesEscena) const
     /*
         Agente autónomo del nivel 2.
 
-        Goku Black percibe la posición actual del jugador y calcula un destino
-        hacia la zona izquierda, que es donde se ubica Gogeta. De esta forma,
-        el disparo sale desde el lado derecho y viaja hacia el jugador.
+        Black percibe la posición de Gogeta y calcula un destino
+        cercano a su ubicación actual dentro del área útil. Como el ataque
+        ahora viaja en línea recta, conviene apuntar cerca del jugador.
     */
 
-    qreal destinoX = ultimaPosicionJugador.x();
-    qreal destinoY = ultimaPosicionJugador.y();
+    const qreal limiteIzquierdo = limitesEscena.left() + 85;
+    const qreal limiteDerecho = limitesEscena.right() - 135;
+    const qreal limiteSuperior = limitesEscena.top() + 110;
+    const qreal limiteInferior = limitesEscena.bottom() - 170;
 
-    const qreal limiteIzquierdo = limitesEscena.left() + 70;
-    const qreal limiteDerecho = limitesEscena.center().x() - 70;
-    const qreal limiteSuperior = limitesEscena.top() + 90;
-    const qreal limiteInferior = limitesEscena.bottom() - 90;
+    qreal destinoX = ultimaPosicionJugador.x() + QRandomGenerator::global()->bounded(-18, 19);
+    qreal destinoY = ultimaPosicionJugador.y() + QRandomGenerator::global()->bounded(-26, 27);
 
     if (destinoX < limiteIzquierdo) {
         destinoX = limiteIzquierdo;
@@ -165,21 +155,4 @@ void Villano::aprender(bool aciertoJugador)
     else {
         fallosPorAtaque[tipoAtaqueActual]++;
     }
-}
-
-void Villano::aprenderTrayectoria(bool impactoJugador)
-{
-    if (impactoJugador) {
-        sesgoCentro = -sesgoCentro;
-    }
-}
-
-float Villano::getVelocidadAtaque() const
-{
-    return velocidadAtaque;
-}
-
-short Villano::getTipoAtaqueActual() const
-{
-    return tipoAtaqueActual;
 }
