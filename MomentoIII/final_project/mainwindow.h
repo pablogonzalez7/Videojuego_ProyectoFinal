@@ -1,6 +1,8 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
+#include <exception>
+#include <functional>
 #include <QList>
 #include <QMainWindow>
 #include <QPainterPath>
@@ -30,13 +32,6 @@ class MainWindow;
 }
 QT_END_NAMESPACE
 
-/*
-    MainWindow
-
-    Conserva el flujo general del juego y el menú.
-    La vida ahora pertenece a Personaje/Jugador/Villano y el dibujo
-    del HUD se actualiza desde MainWindow.
-*/
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
@@ -60,7 +55,6 @@ private slots:
     void iniciarModoFacil();
     void iniciarModoDificil();
     void abrirNivel1DesdeSelector();
-    void abrirNivel2DesdeSelector();
     void actualizarNivel1();
     void actualizarNivel2();
     void iniciarNivel2Facil();
@@ -80,24 +74,26 @@ private:
     QMediaPlayer *audioAmbienteEstadio;
     QMediaPlayer *audioFinalKamehameha;
 
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
     QAudioOutput *salidaAudioInicio;
     QAudioOutput *salidaAudioVegitoYosha;
     QAudioOutput *salidaAudioBatazoMuchedumbre;
     QAudioOutput *salidaAudioAmbienteEstadio;
     QAudioOutput *salidaAudioFinalKamehameha;
-#endif
 
     QPushButton *botonFacil;
     QPushButton *botonDificil;
     QLabel *labelReglasTitulo;
     QLabel *labelReglasTexto;
     QPushButton *botonNivel1;
-    QPushButton *botonNivel2;
     QPushButton *botonNivel2Facil;
     QPushButton *botonNivel2Dificil;
     QLabel *labelNivel2Titulo;
     QLabel *labelNivel2Texto;
+    QLabel *labelOverlayTitulo;
+    QLabel *labelOverlayTexto;
+    QPushButton *botonOverlayPrimario;
+    QPushButton *botonOverlaySecundario;
+    QPushButton *botonOverlayTerciario;
 
     Jugador *vegito;
     Villano *freezer;
@@ -108,9 +104,9 @@ private:
     Items marcadorNivel2Jugador;
     Items marcadorNivel2Enemigo;
     Items aroNivel2;
-    Items zonaDanioBajo;
-    Items zonaDanioMedio;
-    Items zonaDanioAlto;
+    Items zonaDañoBajo;
+    Items zonaDañoMedio;
+    Items zonaDañoAlto;
     Items mensajeTransicionNivel1;
     QGraphicsPixmapItem *rafagaFinalKamehameha;
 
@@ -119,11 +115,9 @@ private:
 
     Proyectil *bolaControlada;
     QList<Proyectil*> bolasFreezer;
-    QList<Proyectil*> bolasDisponibles;
     QList<Proyectil*> bolasBlack;
-    QList<Proyectil*> bolasBlackDisponibles;
 
-    float rachaDanio;
+    float rachaDaño;
     int bolasPendientesPorLanzar;
     float velocidadFreezer;
     DificultadJuego dificultadSeleccionada;
@@ -139,7 +133,7 @@ private:
     bool esperandoLanzamientoBlack;
     bool nivel2DificilActivo;
     bool gogetaKamehamehaActivo;
-    bool danioKamehamehaAplicado;
+    bool dañoKamehamehaAplicado;
     bool rafagaFinalKamehamehaLanzada;
     bool moverGogetaIzquierdaActivo;
     bool moverGogetaDerechaActivo;
@@ -170,8 +164,13 @@ private:
     qreal velocidadMovimientoGogeta;
     qreal velocidadRafagaFinalKamehameha;
     QTimer *timerNivel2;
+    std::function<void()> accionOverlayPrimaria;
+    std::function<void()> accionOverlaySecundaria;
+    std::function<void()> accionOverlayTerciaria;
 
     void mostrarMenuInicio();
+    void volverAlMenuPrincipal();
+    void manejarErrorJuego(const QString &contexto, const std::exception &error);
     void ponerFondo(QString ruta, float opacity = 0.8);
     void ajustarFondo();
     void iniciarVariablesNivel1();
@@ -180,6 +179,9 @@ private:
     void programarSiguienteLanzamiento();
     void revisarCaidaBola(Proyectil *bola);
     void eliminarBola(Proyectil *bola);
+    void desactivarBolasFreezer();
+    bool hayBolasFreezerActivas() const;
+    void prepararPoolFreezer();
 
     void crearBotonesDificultad();
     void mostrarOpcionesDificultad();
@@ -188,8 +190,11 @@ private:
     void mostrarPantallaReglas();
     void ocultarPantallaReglas();
     void crearPantallaNivel2();
+    void crearOverlayEstado();
     void mostrarPantallaNivel2();
     void ocultarPantallaNivel2();
+    void mostrarOverlayEstado(const QString &titulo, const QString &texto, const QString &textoBotonPrimario, const std::function<void()> &accionPrimaria, const QString &textoBotonSecundario = QString(), const std::function<void()> &accionSecundaria = {}, const QString &textoBotonTerciario = QString(), const std::function<void()> &accionTerciaria = {});
+    void ocultarOverlayEstado();
     void ocultarElementosNivel1();
     void ocultarElementosNivel2();
 
@@ -217,23 +222,26 @@ private:
     void lanzarBolaBlack();
     void lanzarAtaqueEspecialBlack();
     void eliminarBolaBlack(Proyectil *bola);
+    void desactivarBolasBlack();
+    bool hayBolasBlackActivas() const;
+    Proyectil *obtenerBolaBlack(const QString &rutaSprite, QPointF posicionInicial);
     void actualizarSaltoGogeta(int dtMs);
     void actualizarBlackDificil(int dtMs);
     void actualizarKamehamehaGogeta(int dtMs);
     void actualizarRafagaFinalKamehameha();
     void actualizarTextoNivel2();
-    void finalizarNivel2(const QString &mensaje);
-    void aplicarDanioGogetaNivel2(qreal dano);
-    void aplicarDanioBlackNivel2(qreal dano);
+    void finalizarNivel2(const QString &titulo, const QString &mensaje, bool permitirReintento);
+    void aplicarDañoGogetaNivel2(qreal daño);
+    void aplicarDañoBlackNivel2(qreal daño);
     void actualizarBonificacionAro(Proyectil *bola, bool esAtaqueEspecial);
     void dispararFinalKamehameha();
     void limpiarRafagaFinalKamehameha();
     bool spriteColisionaConProyectil(Sprite *sprite, Proyectil *bola) const;
 
-    Proyectil *obtenerBolaDisponible(const Villano::Ataque &ataque,QPointF posicionInicial);
+    Proyectil *obtenerBolaFreezer(const Villano::Ataque &ataque,QPointF posicionInicial);
     bool bolaEnZonaBateo(Proyectil *bola);
     QPointF destinoAleatorioBateo();
-    float calcularDanioFreezer(const QPointF &posicionCaida) const;
+    float calcularDañoFreezer(const QPointF &posicionCaida) const;
 
     void ganarNivel1();
     void perderNivel1();
@@ -241,4 +249,4 @@ private:
     void saltarGogeta();
 };
 
-#endif // MAINWINDOW_H
+#endif

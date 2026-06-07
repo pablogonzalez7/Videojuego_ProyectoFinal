@@ -1,9 +1,11 @@
 #include "villano.h"
 
+#include <QLineF>
+#include <QtMath>
 #include <QRandomGenerator>
 
-Villano::Villano(const QString &rutaQuieto,int framesQuieto,const QString &rutaAtaque,int framesAtaque,qreal posX,qreal posY,float vidaMaxima)
-    : Personaje(rutaQuieto,framesQuieto,rutaAtaque,framesAtaque,posX,posY,vidaMaxima)
+Villano::Villano(const QString &rutaQuieto, int framesQuieto, const QString &rutaAtaque, int framesAtaque, qreal posX, qreal posY, float vidaMaxima)
+    : Personaje(rutaQuieto, framesQuieto, rutaAtaque, framesAtaque, posX, posY, vidaMaxima)
 {
     ultimaPosicionJugador = QPointF(posX, posY);
     tipoAtaqueActual = 0;
@@ -87,8 +89,6 @@ short Villano::razonar()
         }
     }
 
-    // Mantiene variedad visible en dificil: aun si hay un ataque preferido
-    // por el historial, Freezer explora otros lanzamientos con frecuencia.
     if (QRandomGenerator::global()->bounded(100) < 45) {
         mejorIndice = QRandomGenerator::global()->bounded(ataques.size());
     }
@@ -98,39 +98,49 @@ short Villano::razonar()
 
 QPointF Villano::razonarDestinoLejano(const QRectF &limitesEscena) const
 {
-    /*
-        Agente autónomo del nivel 2.
 
-        Black percibe la posición de Gogeta y calcula un destino
-        cercano a su ubicación actual dentro del área útil. Como el ataque
-        ahora viaja en línea recta, conviene apuntar cerca del jugador.
-    */
 
     const qreal limiteIzquierdo = limitesEscena.left() + 85;
     const qreal limiteDerecho = limitesEscena.right() - 135;
     const qreal limiteSuperior = limitesEscena.top() + 110;
     const qreal limiteInferior = limitesEscena.bottom() - 170;
+    const QPointF posicionBlack(posicionX, posicionY);
+    const qreal distanciaABlack = QLineF(posicionBlack, ultimaPosicionJugador).length();
 
-    qreal destinoX = ultimaPosicionJugador.x() + QRandomGenerator::global()->bounded(-18, 19);
-    qreal destinoY = ultimaPosicionJugador.y() + QRandomGenerator::global()->bounded(-26, 27);
+    const qreal distanciaMinimaUtil = 120.0;
+    const qreal distanciaMaximaUtil = 540.0;
+    qreal distanciaNormalizada = (distanciaABlack - distanciaMinimaUtil) /
+                                 (distanciaMaximaUtil - distanciaMinimaUtil);
+    distanciaNormalizada = qBound(0.0, distanciaNormalizada, 1.0);
 
-    if (destinoX < limiteIzquierdo) {
-        destinoX = limiteIzquierdo;
+
+    const qreal distanciaObjetivoAJugador = 38.0 + (1.0 - distanciaNormalizada) * 290.0;
+
+    QPointF mejorDestino = ultimaPosicionJugador;
+    qreal mejorPuntaje = 1.0e9;
+
+    for (int i = 0; i < 24; i++) {
+        const qreal candidatoX = limiteIzquierdo +
+                                 QRandomGenerator::global()->generateDouble() *
+                                 (limiteDerecho - limiteIzquierdo);
+        const qreal candidatoY = limiteSuperior +
+                                 QRandomGenerator::global()->generateDouble() *
+                                 (limiteInferior - limiteSuperior);
+        const QPointF candidato(candidatoX, candidatoY);
+        const qreal distanciaAJugador = QLineF(candidato, ultimaPosicionJugador).length();
+        const qreal distanciaACentroDerecha = qAbs(candidatoX - (limiteIzquierdo + (limiteDerecho - limiteIzquierdo) * 0.62));
+
+        qreal puntaje = qAbs(distanciaAJugador - distanciaObjetivoAJugador);
+
+        puntaje += distanciaACentroDerecha * 0.08;
+
+        if (puntaje < mejorPuntaje) {
+            mejorPuntaje = puntaje;
+            mejorDestino = candidato;
+        }
     }
 
-    if (destinoX > limiteDerecho) {
-        destinoX = limiteDerecho;
-    }
-
-    if (destinoY < limiteSuperior) {
-        destinoY = limiteSuperior;
-    }
-
-    if (destinoY > limiteInferior) {
-        destinoY = limiteInferior;
-    }
-
-    return QPointF(destinoX, destinoY);
+    return mejorDestino;
 }
 
 Proyectil *Villano::actuar(QGraphicsScene *scene, QPointF posicionInicial)
@@ -139,7 +149,7 @@ Proyectil *Villano::actuar(QGraphicsScene *scene, QPointF posicionInicial)
     reproducirAtaqueActual();
 
     Proyectil *bola = new Proyectil(scene, ataque.spriteProyectil, posicionInicial);
-    bola->configurarAtaque(ataque.velocidad, ataque.dano);
+    bola->configurarAtaque(ataque.velocidad, ataque.daño);
     return bola;
 }
 

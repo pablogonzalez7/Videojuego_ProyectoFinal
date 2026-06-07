@@ -1,11 +1,35 @@
 #include "sprite.h"
 
+#include <QHash>
+#include <stdexcept>
+
+namespace {
+QPixmap obtenerPixmapSprite(const QString &rutaImagen)
+{
+    static QHash<QString, QPixmap> cacheSprites;
+
+    if (cacheSprites.contains(rutaImagen)) {
+        return cacheSprites.value(rutaImagen);
+    }
+
+    QPixmap nuevoPixmap(rutaImagen);
+
+    if (nuevoPixmap.isNull()) {
+        throw std::runtime_error(("No se pudo cargar la hoja de sprites: " +
+                                  rutaImagen).toStdString());
+    }
+
+    cacheSprites.insert(rutaImagen, nuevoPixmap);
+    return nuevoPixmap;
+}
+}
+
 Sprite::Sprite(const QString &rutaImagen, int cantidadFrames)
 {
     anchoBase = 0;
     altoBase = 0;
-    mantenerTamanoVisual = false;
-    usarTamanoVisualFijo = false;
+    mantenerTamañoVisual = false;
+    usarTamañoVisualFijo = false;
     anchoVisualFijo = 0;
     altoVisualFijo = 0;
     cargarHoja(rutaImagen, cantidadFrames);
@@ -33,15 +57,26 @@ void Sprite::cargarHoja(const QString &rutaImagen, int cantidadFrames)
     totalFrames = cantidadFrames;
 
     if (totalFrames <= 0) {
-        totalFrames = 1;
+        throw std::runtime_error(("La hoja de sprites debe tener al menos un frame: " +
+                                  rutaImagen).toStdString());
     }
 
-    pixmap = QPixmap(rutaImagen);
+    pixmap = obtenerPixmapSprite(rutaImagen);
+
+    if (pixmap.width() < totalFrames) {
+        throw std::runtime_error(("La hoja de sprites tiene menos pixeles de ancho que frames: " +
+                                  rutaImagen).toStdString());
+    }
 
     ancho = pixmap.width() / totalFrames;
     alto = pixmap.height();
 
-    if (mantenerTamanoVisual && (anchoBase <= 0 || altoBase <= 0)) {
+    if (ancho <= 0 || alto <= 0) {
+        throw std::runtime_error(("La hoja de sprites tiene dimensiones invalidas: " +
+                                  rutaImagen).toStdString());
+    }
+
+    if (mantenerTamañoVisual && (anchoBase <= 0 || altoBase <= 0)) {
         anchoBase = ancho;
         altoBase = alto;
     }
@@ -64,12 +99,12 @@ bool Sprite::avanzarFrame()
     return false;
 }
 
-void Sprite::setMantenerTamanoVisual(bool mantener)
+void Sprite::setMantenerTamañoVisual(bool mantener)
 {
     prepareGeometryChange();
-    mantenerTamanoVisual = mantener;
+    mantenerTamañoVisual = mantener;
 
-    if (mantenerTamanoVisual) {
+    if (mantenerTamañoVisual) {
         anchoBase = ancho;
         altoBase = alto;
     }
@@ -77,19 +112,19 @@ void Sprite::setMantenerTamanoVisual(bool mantener)
     update();
 }
 
-void Sprite::fijarTamanoVisual(qreal anchoVisible, qreal altoVisible)
+void Sprite::fijarTamañoVisual(qreal anchoVisible, qreal altoVisible)
 {
     prepareGeometryChange();
-    usarTamanoVisualFijo = true;
+    usarTamañoVisualFijo = true;
     anchoVisualFijo = anchoVisible;
     altoVisualFijo = altoVisible;
     update();
 }
 
-void Sprite::limpiarTamanoVisualFijo()
+void Sprite::limpiarTamañoVisualFijo()
 {
     prepareGeometryChange();
-    usarTamanoVisualFijo = false;
+    usarTamañoVisualFijo = false;
     anchoVisualFijo = 0;
     altoVisualFijo = 0;
     update();
@@ -117,12 +152,12 @@ QRectF Sprite::boundingRect() const
         altoFrameActual = framesPersonalizados.at(frameActual).height();
     }
 
-    const qreal anchoVisible = usarTamanoVisualFijo ? anchoVisualFijo : (mantenerTamanoVisual ? anchoBase : anchoFrameActual);
-    const qreal altoVisible = usarTamanoVisualFijo ? altoVisualFijo : (mantenerTamanoVisual ? altoBase : altoFrameActual);
+    const qreal anchoVisible = usarTamañoVisualFijo ? anchoVisualFijo : (mantenerTamañoVisual ? anchoBase : anchoFrameActual);
+    const qreal altoVisible = usarTamañoVisualFijo ? altoVisualFijo : (mantenerTamañoVisual ? altoBase : altoFrameActual);
     return QRectF(-anchoVisible / 2, -altoVisible / 2, anchoVisible, altoVisible);
 }
 
-void Sprite::paint(QPainter *painter,const QStyleOptionGraphicsItem *option,QWidget *widget)
+void Sprite::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
 {
     Q_UNUSED(option);
     Q_UNUSED(widget);
@@ -135,12 +170,12 @@ void Sprite::paint(QPainter *painter,const QStyleOptionGraphicsItem *option,QWid
         frameOrigen = framesPersonalizados.at(frameActual);
     }
 
-    const qreal anchoVisible = usarTamanoVisualFijo ? anchoVisualFijo : (mantenerTamanoVisual ? anchoBase : frameOrigen.width());
-    const qreal altoVisible = usarTamanoVisualFijo ? altoVisualFijo : (mantenerTamanoVisual ? altoBase : frameOrigen.height());
+    const qreal anchoVisible = usarTamañoVisualFijo ? anchoVisualFijo : (mantenerTamañoVisual ? anchoBase : frameOrigen.width());
+    const qreal altoVisible = usarTamañoVisualFijo ? altoVisualFijo : (mantenerTamañoVisual ? altoBase : frameOrigen.height());
 
     QRectF destino(-anchoVisible / 2, -altoVisible / 2, anchoVisible, altoVisible);
 
-    if (usarTamanoVisualFijo && frameOrigen.width() > 0.0 && frameOrigen.height() > 0.0) {
+    if (usarTamañoVisualFijo && frameOrigen.width() > 0.0 && frameOrigen.height() > 0.0) {
         const qreal escalaX = anchoVisible / frameOrigen.width();
         const qreal escalaY = altoVisible / frameOrigen.height();
         const qreal escala = qMin(escalaX, escalaY);

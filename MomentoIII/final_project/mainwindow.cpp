@@ -3,9 +3,7 @@
 #include "proyectil.h"
 #include "ui_mainwindow.h"
 
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
 #include <QAudioOutput>
-#endif
 #include <QColor>
 #include <QFont>
 #include <QGraphicsPixmapItem>
@@ -14,6 +12,7 @@
 #include <QKeyEvent>
 #include <QLabel>
 #include <QMediaPlayer>
+#include <QMessageBox>
 #include <QPolygonF>
 #include <QPushButton>
 #include <QRandomGenerator>
@@ -21,6 +20,8 @@
 #include <QTimer>
 #include <QUrl>
 #include <QtMath>
+#include <exception>
+#include <stdexcept>
 
 namespace {
 constexpr qreal kAnchoBarraVida = 280.0;
@@ -28,41 +29,25 @@ constexpr qreal kAltoBarraVida = 24.0;
 
 void configurarReinicioAudio(QMediaPlayer *player, QObject *context)
 {
-    QObject::connect(player,
-                     &QMediaPlayer::mediaStatusChanged,
-                     context,
-                     [player](QMediaPlayer::MediaStatus status) {
-                         if (status == QMediaPlayer::EndOfMedia && player != nullptr) {
-                             player->setPosition(0);
-                             player->play();
-                         }
-                     });
+    QObject::connect(player,&QMediaPlayer::mediaStatusChanged,context,[player](QMediaPlayer::MediaStatus status)
+     {
+            if (status == QMediaPlayer::EndOfMedia && player != nullptr) {
+                player->setPosition(0);
+                player->play();
+            }
+        });
 }
 
-void configurarAudio(QMediaPlayer *player,
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
-                     QAudioOutput *salidaAudio,
-#endif
-                     const QString &ruta,
-                     int volumenPorcentaje)
+void configurarAudio(QMediaPlayer *player, QAudioOutput *salidaAudio, const QString &ruta, int volumenPorcentaje)
 {
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
     salidaAudio->setVolume(volumenPorcentaje / 100.0);
     player->setAudioOutput(salidaAudio);
     player->setSource(QUrl(ruta));
-#else
-    player->setMedia(QUrl(ruta));
-    player->setVolume(volumenPorcentaje);
-#endif
 }
 
 bool audioEstaReproduciendose(QMediaPlayer *player)
 {
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
     return player != nullptr && player->playbackState() == QMediaPlayer::PlayingState;
-#else
-    return player != nullptr && player->state() == QMediaPlayer::PlayingState;
-#endif
 }
 }
 
@@ -82,11 +67,15 @@ MainWindow::MainWindow(QWidget *parent)
     , labelReglasTitulo(nullptr)
     , labelReglasTexto(nullptr)
     , botonNivel1(nullptr)
-    , botonNivel2(nullptr)
     , botonNivel2Facil(nullptr)
     , botonNivel2Dificil(nullptr)
     , labelNivel2Titulo(nullptr)
     , labelNivel2Texto(nullptr)
+    , labelOverlayTitulo(nullptr)
+    , labelOverlayTexto(nullptr)
+    , botonOverlayPrimario(nullptr)
+    , botonOverlaySecundario(nullptr)
+    , botonOverlayTerciario(nullptr)
     , vegito(nullptr)
     , freezer(nullptr)
     , gokuBlack(nullptr)
@@ -96,13 +85,11 @@ MainWindow::MainWindow(QWidget *parent)
     , textoEstadoNivel2(nullptr)
     , bolaControlada(nullptr)
     , timerNivel2(nullptr)
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
     , salidaAudioInicio(nullptr)
     , salidaAudioVegitoYosha(nullptr)
     , salidaAudioBatazoMuchedumbre(nullptr)
     , salidaAudioAmbienteEstadio(nullptr)
     , salidaAudioFinalKamehameha(nullptr)
-#endif
 {
     ui->setupUi(this);
 
@@ -111,7 +98,7 @@ MainWindow::MainWindow(QWidget *parent)
             this,
             &MainWindow::on_botonInicio_clicked);
 
-    rachaDanio = 0.0f;
+    rachaDaño = 0.0f;
     velocidadFreezer = 3.6f;
     lanzamientoOscilatorio = false;
     dificultadSeleccionada = Facil;
@@ -125,7 +112,7 @@ MainWindow::MainWindow(QWidget *parent)
     esperandoLanzamientoBlack = false;
     nivel2DificilActivo = false;
     gogetaKamehamehaActivo = false;
-    danioKamehamehaAplicado = false;
+    dañoKamehamehaAplicado = false;
     rafagaFinalKamehamehaLanzada = false;
     moverGogetaIzquierdaActivo = false;
     moverGogetaDerechaActivo = false;
@@ -171,10 +158,7 @@ MainWindow::MainWindow(QWidget *parent)
         );
 
     QPixmap pixmap(":/images/backgrounds/titulo.png");
-    ui->labelTitulo->setPixmap(pixmap.scaled(400,
-                                             150,
-                                             Qt::KeepAspectRatio,
-                                             Qt::SmoothTransformation));
+    ui->labelTitulo->setPixmap(pixmap.scaled(400,150,Qt::KeepAspectRatio,Qt::SmoothTransformation));
     ui->labelTitulo->setAlignment(Qt::AlignCenter);
 
     iniciarAudioInicio();
@@ -182,9 +166,11 @@ MainWindow::MainWindow(QWidget *parent)
     crearBotonesDificultad();
     crearTextosReglas();
     crearPantallaNivel2();
+    crearOverlayEstado();
     ocultarPantallaReglas();
     ocultarOpcionesDificultad();
     ocultarPantallaNivel2();
+    ocultarOverlayEstado();
 }
 
 MainWindow::~MainWindow()
@@ -195,16 +181,8 @@ MainWindow::~MainWindow()
         delete bolasFreezer.takeLast();
     }
 
-    while (!bolasDisponibles.isEmpty()) {
-        delete bolasDisponibles.takeLast();
-    }
-
     while (!bolasBlack.isEmpty()) {
         delete bolasBlack.takeLast();
-    }
-
-    while (!bolasBlackDisponibles.isEmpty()) {
-        delete bolasBlackDisponibles.takeLast();
     }
 
     destruirHUDVida();
@@ -227,10 +205,7 @@ void MainWindow::ponerFondo(QString ruta, float opacity)
         fondo = nullptr;
     }
 
-    imagenFondo = imagenFondo.scaled(ui->graphicsView->width(),
-                                     ui->graphicsView->height(),
-                                     Qt::IgnoreAspectRatio,
-                                     Qt::SmoothTransformation);
+    imagenFondo = imagenFondo.scaled(ui->graphicsView->width(),ui->graphicsView->height(),Qt::IgnoreAspectRatio,Qt::SmoothTransformation);
 
     fondo = scene->addPixmap(imagenFondo);
     fondo->setPos(0, 0);
@@ -242,9 +217,54 @@ void MainWindow::mostrarMenuInicio()
 {
     ocultarElementosNivel1();
     ocultarElementosNivel2();
+    ocultarOverlayEstado();
     detenerAudioAmbienteEstadio();
     ponerFondo(":/images/backgrounds/background_main.png");
     iniciarAudioInicio();
+}
+
+void MainWindow::volverAlMenuPrincipal()
+{
+    if (timerNivel1 != nullptr) {
+        timerNivel1->stop();
+    }
+
+    if (timerNivel2 != nullptr) {
+        timerNivel2->stop();
+    }
+
+    nivel1Activo = false;
+    nivel2Activo = false;
+    nivel2EnPausa = false;
+    esperandoLanzamientos = false;
+    esperandoLanzamientoBlack = false;
+    ui->labelTitulo->show();
+    ui->botonInicio->show();
+    ocultarPantallaReglas();
+    ocultarOpcionesDificultad();
+    ocultarPantallaNivel2();
+    mostrarMenuInicio();
+}
+
+void MainWindow::manejarErrorJuego(const QString &contexto, const std::exception &error)
+{
+    nivel1Activo = false;
+    nivel2Activo = false;
+    nivel2EnPausa = true;
+    esperandoLanzamientos = false;
+    esperandoLanzamientoBlack = false;
+    bolasPendientesPorLanzar = 0;
+
+    if (timerNivel1 != nullptr) {
+        timerNivel1->stop();
+    }
+
+    if (timerNivel2 != nullptr) {
+        timerNivel2->stop();
+    }
+
+    QMessageBox::critical(this,"Error al cargar recursos",contexto +"\n\nDetalle: "
+     +QString::fromLocal8Bit(error.what()) +"\n\nRevise que el archivo exista en el .qrc y que la ruta coincida exactamente.");
 }
 
 void MainWindow::on_botonInicio_clicked()
@@ -279,15 +299,11 @@ void MainWindow::abrirNivel1DesdeSelector()
     mostrarPantallaReglas();
 }
 
-void MainWindow::abrirNivel2DesdeSelector()
-{
-    mostrarPantallaNivel2();
-}
-
-void MainWindow::iniciarNivel2Facil()
+void MainWindow::iniciarNivel2Facil() try
 {
     detenerAudioInicio();
     iniciarAudioAmbienteEstadio();
+    ocultarOverlayEstado();
     dificultadSeleccionada = Facil;
     nivel1Activo = false;
     nivel2Activo = true;
@@ -308,7 +324,7 @@ void MainWindow::iniciarNivel2Facil()
 
     if (gogeta == nullptr) {
         gogeta = new Sprite(":/images/sprites/gogeta_derecha.png", 3);
-        gogeta->setMantenerTamanoVisual(true);
+        gogeta->setMantenerTamañoVisual(true);
         scene->addItem(gogeta);
         gogeta->setZValue(8);
     }
@@ -325,7 +341,7 @@ void MainWindow::iniciarNivel2Facil()
     rutaSpriteGogetaDireccion = rutaSpriteGogetaActual;
     gogetaSaltando = false;
     gogeta->cambiarSprite(rutaSpriteGogetaActual, 3);
-    gogeta->fijarTamanoVisual(anchoVisualGogeta, altoVisualGogeta);
+    gogeta->fijarTamañoVisual(anchoVisualGogeta, altoVisualGogeta);
     gogeta->reiniciarAnimacion();
     gogeta->setPos(posicionGogetaX, posicionActualGogetaY);
     gogeta->setVisible(true);
@@ -336,8 +352,8 @@ void MainWindow::iniciarNivel2Facil()
     }
 
     gokuBlack = new Villano(":/images/sprites/black_quieto.png",1,":/images/sprites/black_lanzamiento.png",5,650,135,10.0f);
-    gokuBlack->getSprite()->setMantenerTamanoVisual(true);
-    gokuBlack->getSprite()->fijarTamanoVisual(82.0, 132.0);
+    gokuBlack->getSprite()->setMantenerTamañoVisual(true);
+    gokuBlack->getSprite()->fijarTamañoVisual(82.0, 132.0);
     gokuBlack->configurarAtaques({{4.8f,
                                    1.0f,
                                    ":/images/sprites/bolaBlack_actualizada.png",
@@ -367,11 +383,16 @@ void MainWindow::iniciarNivel2Facil()
     timerNivel2->start(16);
     programarSiguienteLanzamientoBlack();
 }
+catch (const std::exception &error)
+{
+    manejarErrorJuego("No se pudo iniciar el Nivel 2 facil.", error);
+}
 
-void MainWindow::iniciarNivel2Dificil()
+void MainWindow::iniciarNivel2Dificil() try
 {
     detenerAudioInicio();
     iniciarAudioAmbienteEstadio();
+    ocultarOverlayEstado();
     dificultadSeleccionada = Dificil;
     nivel1Activo = false;
     nivel2Activo = true;
@@ -392,7 +413,7 @@ void MainWindow::iniciarNivel2Dificil()
 
     if (gogeta == nullptr) {
         gogeta = new Sprite(":/images/sprites/gogeta_derecha.png", 3);
-        gogeta->setMantenerTamanoVisual(true);
+        gogeta->setMantenerTamañoVisual(true);
         scene->addItem(gogeta);
         gogeta->setZValue(8);
     }
@@ -410,7 +431,7 @@ void MainWindow::iniciarNivel2Dificil()
     gogetaSaltando = false;
     gogetaKamehamehaActivo = false;
     gogeta->cambiarSprite(rutaSpriteGogetaActual, 3);
-    gogeta->fijarTamanoVisual(anchoVisualGogeta, altoVisualGogeta);
+    gogeta->fijarTamañoVisual(anchoVisualGogeta, altoVisualGogeta);
     gogeta->reiniciarAnimacion();
     gogeta->setPos(posicionGogetaX, posicionActualGogetaY);
     gogeta->setVisible(true);
@@ -421,8 +442,8 @@ void MainWindow::iniciarNivel2Dificil()
     }
 
     gokuBlack = new Villano(":/images/sprites/black_dificil_quieto.png",1,":/images/sprites/black_lanzamiento_dificil.png",4,650,135,100.0f);
-    gokuBlack->getSprite()->setMantenerTamanoVisual(true);
-    gokuBlack->getSprite()->fijarTamanoVisual(84.0, 136.0);
+    gokuBlack->getSprite()->setMantenerTamañoVisual(true);
+    gokuBlack->getSprite()->fijarTamañoVisual(84.0, 136.0);
     gokuBlack->configurarAtaques({{5.0f,
                                    1.0f,
                                    ":/images/sprites/bolaBlack_actualizada.png",
@@ -444,11 +465,16 @@ void MainWindow::iniciarNivel2Dificil()
     timerNivel2->start(16);
     programarSiguienteLanzamientoBlack();
 }
+catch (const std::exception &error)
+{
+    manejarErrorJuego("No se pudo iniciar el Nivel 2 dificil.", error);
+}
 
-void MainWindow::iniciarNivel1()
+void MainWindow::iniciarNivel1() try
 {
     detenerAudioInicio();
     iniciarAudioAmbienteEstadio();
+    ocultarOverlayEstado();
     nivel2Activo = false;
     ui->labelTitulo->hide();
     ocultarPantallaReglas();
@@ -461,7 +487,7 @@ void MainWindow::iniciarNivel1()
     if (vegito == nullptr) {
         vegito = new Jugador(":/images/sprites/vegitoBateoQuieto.png",1,":/images/sprites/vegitoBateo.png",5,650,540,20.0f);
 
-        vegito->configurarSpritesEuforia(":/images/sprites/transformacion_vegito.png",4,":/images/sprites/vegito_bateo_kaioken.png",5);
+        vegito->configurarSpritesEuforia(":/images/sprites/transformacion_vegito.png",5,":/images/sprites/vegito_bateo_kaioken.png",5);
         vegito->configurarSpriteImpacto(":/images/sprites/vegito_impacto.png", 1);
     }
 
@@ -470,11 +496,11 @@ void MainWindow::iniciarNivel1()
     vegito->setPos(650, 540);
 
     if (freezer == nullptr) {
-        freezer = new Villano(":/images/sprites/freezerPitcher.png",6,":/images/sprites/freezerPitcher.png",6,650,270,100.0f);
+        freezer = new Villano(":/images/sprites/freezerPitcher.png",6,":/images/sprites/freezerPitcher.png",6,650,270,200.0f);
         freezer->configurarSpriteImpacto(":/images/sprites/freezer_impacto.png", 1);
     }
 
-    freezer->getSprite()->setMantenerTamanoVisual(true);
+    freezer->getSprite()->setMantenerTamañoVisual(true);
     freezer->agregarAEscena(scene);
     freezer->setVisible(true);
     freezer->setPos(650, 270);
@@ -489,10 +515,14 @@ void MainWindow::iniciarNivel1()
     timerNivel1->start(16);
     programarSiguienteLanzamiento();
 }
+catch (const std::exception &error)
+{
+    manejarErrorJuego("No se pudo iniciar el Nivel 1.", error);
+}
 
 void MainWindow::iniciarVariablesNivel1()
 {
-    rachaDanio = 0.0f;
+    rachaDaño = 0.0f;
     velocidadFreezer = 3.6f;
     lanzamientoOscilatorio = false;
     bolasPendientesPorLanzar = 0;
@@ -518,13 +548,8 @@ void MainWindow::iniciarVariablesNivel1()
         textoEstadoKaioken = nullptr;
     }
 
-    while (!bolasFreezer.isEmpty()) {
-        eliminarBola(bolasFreezer.last());
-    }
-
-    for (int i = 0; i < bolasDisponibles.size(); i++) {
-        bolasDisponibles.at(i)->desactivar();
-    }
+    desactivarBolasFreezer();
+    prepararPoolFreezer();
 
     crearHUDNivel1();
     actualizarHUD();
@@ -607,9 +632,9 @@ void MainWindow::configurarZonasBateo()
     const qreal radio20 = rectaEscena.width() * 0.308;
     const qreal radio30 = rectaEscena.width() * 0.365;
 
-    zonaDanioBajo.crearHitboxTrayectoria(scene, crearSector(radioInicio, radio10));
-    zonaDanioMedio.crearHitboxTrayectoria(scene, crearSector(radio10, radio20));
-    zonaDanioAlto.crearHitboxTrayectoria(scene, crearSector(radio20, radio30));
+    zonaDañoBajo.crearHitboxTrayectoria(scene, crearSector(radioInicio, radio10));
+    zonaDañoMedio.crearHitboxTrayectoria(scene, crearSector(radio10, radio20));
+    zonaDañoAlto.crearHitboxTrayectoria(scene, crearSector(radio20, radio30));
 }
 
 void MainWindow::crearMarcadoresNivel2()
@@ -619,20 +644,8 @@ void MainWindow::crearMarcadoresNivel2()
     }
 
     const qreal xBlack = scene->sceneRect().width() - kAnchoBarraVida - 20;
-    marcadorNivel2Jugador.crearTextoEscena(scene,
-                                           20,
-                                           82,
-                                           "",
-                                           QColor(220, 236, 255),
-                                           13,
-                                           true);
-    marcadorNivel2Enemigo.crearTextoEscena(scene,
-                                           xBlack,
-                                           82,
-                                           "",
-                                           QColor(255, 220, 225),
-                                           13,
-                                           true);
+    marcadorNivel2Jugador.crearTextoEscena(scene,20,82,"",QColor(220, 236, 255),13,true);
+    marcadorNivel2Enemigo.crearTextoEscena(scene,xBlack,82,"",QColor(255, 220, 225),13,true);
 }
 
 void MainWindow::crearBotonesDificultad()
@@ -679,23 +692,9 @@ void MainWindow::crearTextosReglas()
     labelReglasTexto->setAlignment(Qt::AlignLeft | Qt::AlignTop);
     labelReglasTexto->setWordWrap(true);
 
-    Items::aplicarEstiloPanel(labelReglasTitulo,
-                              "rgba(0, 0, 0, 190)",
-                              "white",
-                              "white",
-                              12,
-                              8,
-                              22,
-                              true);
+    Items::aplicarEstiloPanel(labelReglasTitulo,"rgba(0, 0, 0, 190)","white","white",12,8,22,true);
 
-    Items::aplicarEstiloPanel(labelReglasTexto,
-                              "rgba(0, 0, 0, 190)",
-                              "white",
-                              "white",
-                              12,
-                              12,
-                              15,
-                              true);
+    Items::aplicarEstiloPanel(labelReglasTexto,"rgba(0, 0, 0, 190)","white","white",12,12,15,true);
 
     labelReglasTexto->setText(
         "->Golpea la bola con la tecla P cuando llegue a Vegito.\n"
@@ -705,14 +704,13 @@ void MainWindow::crearTextosReglas()
         "->Cuando Vegito baje del 30% de vida entrara en kaioken.\n"
         "->En kaioken, cada bateo conectado tambien lastima directamente a Freezer.\n"
         "->Facil: un solo tipo de ataque.\n"
-        "->Dificil: Freezer puede lanzar 3 ataques con distinto dano y velocidad."
+        "->Dificil: Freezer puede lanzar 3 ataques con distinto daño y velocidad."
         );
 }
 
 void MainWindow::crearPantallaNivel2()
 {
     botonNivel1 = new QPushButton("Volver a Nivel 1", ui->centralwidget);
-    botonNivel2 = new QPushButton("Volver al menu Nivel 2", ui->centralwidget);
     botonNivel2Facil = new QPushButton("Facil", ui->centralwidget);
     botonNivel2Dificil = new QPushButton("Dificil", ui->centralwidget);
     labelNivel2Titulo = new QLabel("Nivel 2: Seleccion de dificultad", ui->centralwidget);
@@ -721,16 +719,6 @@ void MainWindow::crearPantallaNivel2()
     botonNivel1->setStyleSheet(
         "QPushButton {"
         "background-color: rgba(35, 85, 160, 220);"
-        "color: white;"
-        "font-weight: bold;"
-        "border: 2px solid white;"
-        "border-radius: 10px;"
-        "}"
-        );
-
-    botonNivel2->setStyleSheet(
-        "QPushButton {"
-        "background-color: rgba(170, 90, 20, 220);"
         "color: white;"
         "font-weight: bold;"
         "border: 2px solid white;"
@@ -762,23 +750,9 @@ void MainWindow::crearPantallaNivel2()
     labelNivel2Texto->setAlignment(Qt::AlignLeft | Qt::AlignTop);
     labelNivel2Texto->setWordWrap(true);
 
-    Items::aplicarEstiloPanel(labelNivel2Titulo,
-                              "rgba(0, 0, 0, 150)",
-                              "white",
-                              "white",
-                              12,
-                              8,
-                              22,
-                              true);
+    Items::aplicarEstiloPanel(labelNivel2Titulo,"rgba(0, 0, 0, 150)","white","white",12,8,22,true);
 
-    Items::aplicarEstiloPanel(labelNivel2Texto,
-                              "rgba(0, 0, 0, 150)",
-                              "white",
-                              "white",
-                              12,
-                              12,
-                              15,
-                              true);
+    Items::aplicarEstiloPanel(labelNivel2Texto,"rgba(0, 0, 0, 150)","white","white",12,12,15,true);
 
     labelNivel2Texto->setText(
         "Escoge la dificultad del Nivel 2.\n"
@@ -795,25 +769,95 @@ void MainWindow::crearPantallaNivel2()
         );
 
     connect(botonNivel1, &QPushButton::clicked, this, &MainWindow::abrirNivel1DesdeSelector);
-    connect(botonNivel2, &QPushButton::clicked, this, &MainWindow::abrirNivel2DesdeSelector);
     connect(botonNivel2Facil, &QPushButton::clicked, this, &MainWindow::iniciarNivel2Facil);
     connect(botonNivel2Dificil, &QPushButton::clicked, this, &MainWindow::iniciarNivel2Dificil);
+
+    labelNivel2Titulo->setGeometry(width() / 2 - 220, height() / 8, 440, 55);
+    labelNivel2Texto->setGeometry(width() / 2 - 260, height() / 4, 520, height() / 3);
+    botonNivel2Facil->setGeometry(width() / 2 - 110, height() * 3 / 4, 95, 45);
+    botonNivel2Dificil->setGeometry(width() / 2 + 15, height() * 3 / 4, 95, 45);
+    botonNivel1->setGeometry(width() / 2 - 90, height() * 3 / 4 + 62, 180, 45);
+}
+
+void MainWindow::crearOverlayEstado()
+{
+    labelOverlayTitulo = new QLabel(ui->centralwidget);
+    labelOverlayTexto = new QLabel(ui->centralwidget);
+    botonOverlayPrimario = new QPushButton(ui->centralwidget);
+    botonOverlaySecundario = new QPushButton(ui->centralwidget);
+    botonOverlayTerciario = new QPushButton(ui->centralwidget);
+
+    labelOverlayTitulo->setAlignment(Qt::AlignCenter);
+    labelOverlayTexto->setAlignment(Qt::AlignLeft | Qt::AlignTop);
+    labelOverlayTexto->setWordWrap(true);
+
+    Items::aplicarEstiloPanel(labelOverlayTitulo,"rgba(0, 0, 0, 205)","#f7e7a7","white",14,8,24,true);
+
+    Items::aplicarEstiloPanel(labelOverlayTexto,"rgba(0, 0, 0, 205)","#f7e7a7","white",14,14,15,true);
+
+    const QString estiloBotonPrincipal =
+        "QPushButton {"
+        "background-color: rgba(40, 125, 60, 230);"
+        "color: white;"
+        "font-weight: bold;"
+        "border: 2px solid white;"
+        "border-radius: 10px;"
+        "padding: 8px 14px;"
+        "}";
+    const QString estiloBotonSecundario =
+        "QPushButton {"
+        "background-color: rgba(35, 85, 160, 230);"
+        "color: white;"
+        "font-weight: bold;"
+        "border: 2px solid white;"
+        "border-radius: 10px;"
+        "padding: 8px 14px;"
+        "}";
+    const QString estiloBotonTerciario =
+        "QPushButton {"
+        "background-color: rgba(150, 40, 40, 230);"
+        "color: white;"
+        "font-weight: bold;"
+        "border: 2px solid white;"
+        "border-radius: 10px;"
+        "padding: 8px 14px;"
+        "}";
+
+    botonOverlayPrimario->setStyleSheet(estiloBotonPrincipal);
+    botonOverlaySecundario->setStyleSheet(estiloBotonSecundario);
+    botonOverlayTerciario->setStyleSheet(estiloBotonTerciario);
+
+    connect(botonOverlayPrimario, &QPushButton::clicked, this, [this]() {
+        if (accionOverlayPrimaria) {
+            accionOverlayPrimaria();
+        }
+    });
+
+    connect(botonOverlaySecundario, &QPushButton::clicked, this, [this]() {
+        if (accionOverlaySecundaria) {
+            accionOverlaySecundaria();
+        }
+    });
+
+    connect(botonOverlayTerciario, &QPushButton::clicked, this, [this]() {
+        if (accionOverlayTerciaria) {
+            accionOverlayTerciaria();
+        }
+    });
+
+    labelOverlayTitulo->setGeometry(width() / 2 - 260, height() / 7, 520, 60);
+    labelOverlayTexto->setGeometry(width() / 2 - 280, height() / 4, 560, 185);
+    botonOverlayPrimario->setGeometry(width() / 2 - 235, height() * 3 / 4, 150, 45);
+    botonOverlaySecundario->setGeometry(width() / 2 - 75, height() * 3 / 4, 150, 45);
+    botonOverlayTerciario->setGeometry(width() / 2 + 85, height() * 3 / 4, 150, 45);
 }
 
 void MainWindow::iniciarAudioInicio()
 {
     if (musicaInicio == nullptr) {
         musicaInicio = new QMediaPlayer(this);
-
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
         salidaAudioInicio = new QAudioOutput(this);
-#endif
-        configurarAudio(musicaInicio,
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
-                        salidaAudioInicio,
-#endif
-                        "qrc:/images/audios/new_main_audio.mp3",
-                        35);
+        configurarAudio(musicaInicio, salidaAudioInicio, "qrc:/images/audios/new_main_audio.mp3", 35);
         configurarReinicioAudio(musicaInicio, this);
     }
 
@@ -833,59 +877,27 @@ void MainWindow::iniciarAudiosBatazo()
 {
     if (audioVegitoYosha == nullptr) {
         audioVegitoYosha = new QMediaPlayer(this);
-
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
         salidaAudioVegitoYosha = new QAudioOutput(this);
-#endif
-        configurarAudio(audioVegitoYosha,
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
-                        salidaAudioVegitoYosha,
-#endif
-                        "qrc:/images/audios/vegito-yosha.mp3",
-                        100);
+        configurarAudio(audioVegitoYosha, salidaAudioVegitoYosha, "qrc:/images/audios/vegito-yosha.mp3", 100);
     }
 
     if (audioBatazoMuchedumbre == nullptr) {
         audioBatazoMuchedumbre = new QMediaPlayer(this);
-
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
         salidaAudioBatazoMuchedumbre = new QAudioOutput(this);
-#endif
-        configurarAudio(audioBatazoMuchedumbre,
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
-                        salidaAudioBatazoMuchedumbre,
-#endif
-                        "qrc:/images/audios/sonido_bateo_muchedumbre.wav",
-                        95);
+        configurarAudio(audioBatazoMuchedumbre, salidaAudioBatazoMuchedumbre, "qrc:/images/audios/sonido_bateo_muchedumbre.wav", 95);
     }
 
     if (audioAmbienteEstadio == nullptr) {
         audioAmbienteEstadio = new QMediaPlayer(this);
-
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
         salidaAudioAmbienteEstadio = new QAudioOutput(this);
-#endif
-        configurarAudio(audioAmbienteEstadio,
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
-                        salidaAudioAmbienteEstadio,
-#endif
-                        "qrc:/images/audios/muchedumbre_estadio.mp3",
-                        42);
+        configurarAudio(audioAmbienteEstadio, salidaAudioAmbienteEstadio, "qrc:/images/audios/muchedumbre_estadio.mp3", 42);
         configurarReinicioAudio(audioAmbienteEstadio, this);
     }
 
     if (audioFinalKamehameha == nullptr) {
         audioFinalKamehameha = new QMediaPlayer(this);
-
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
         salidaAudioFinalKamehameha = new QAudioOutput(this);
-#endif
-        configurarAudio(audioFinalKamehameha,
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
-                        salidaAudioFinalKamehameha,
-#endif
-                        "qrc:/images/audios/final_kamehameha.mp3",
-                        95);
+        configurarAudio(audioFinalKamehameha, salidaAudioFinalKamehameha, "qrc:/images/audios/final_kamehameha.mp3", 95);
     }
 }
 
@@ -937,15 +949,15 @@ void MainWindow::reproducirAudioFinalKamehameha()
     }
 }
 
-void MainWindow::mostrarEfectoTajoEspada()
+void MainWindow::mostrarEfectoTajoEspada() try
 {
     if (scene == nullptr || freezer == nullptr) {
         return;
     }
 
     Sprite *efectoTajo = new Sprite(":/images/sprites/tajo_espada.png", 5);
-    efectoTajo->setMantenerTamanoVisual(true);
-    efectoTajo->fijarTamanoVisual(170.0, 170.0);
+    efectoTajo->setMantenerTamañoVisual(true);
+    efectoTajo->fijarTamañoVisual(170.0, 170.0);
     scene->addItem(efectoTajo);
 
     const QRectF freezerRect = freezer->getSprite()->sceneBoundingRect();
@@ -969,6 +981,10 @@ void MainWindow::mostrarEfectoTajoEspada()
 
         delete efectoTajo;
     });
+}
+catch (const std::exception &error)
+{
+    manejarErrorJuego("No se pudo mostrar el efecto de tajo.", error);
 }
 
 void MainWindow::mostrarOpcionesDificultad()
@@ -995,6 +1011,8 @@ void MainWindow::ocultarOpcionesDificultad()
 
 void MainWindow::mostrarPantallaReglas()
 {
+    ocultarOverlayEstado();
+
     if (labelReglasTitulo != nullptr) {
         labelReglasTitulo->show();
     }
@@ -1023,6 +1041,7 @@ void MainWindow::mostrarPantallaNivel2()
     detenerAudioAmbienteEstadio();
     nivel1Activo = false;
     nivel2Activo = false;
+    ocultarOverlayEstado();
     ponerFondo(":/images/backgrounds/nivel2.png", 1.0);
     ui->labelTitulo->hide();
     ocultarPantallaReglas();
@@ -1057,10 +1076,6 @@ void MainWindow::mostrarPantallaNivel2()
         botonNivel1->show();
     }
 
-    if (botonNivel2 != nullptr) {
-        botonNivel2->show();
-    }
-
     if (botonNivel2Facil != nullptr) {
         botonNivel2Facil->show();
     }
@@ -1084,10 +1099,6 @@ void MainWindow::ocultarPantallaNivel2()
         botonNivel1->hide();
     }
 
-    if (botonNivel2 != nullptr) {
-        botonNivel2->hide();
-    }
-
     if (botonNivel2Facil != nullptr) {
         botonNivel2Facil->hide();
     }
@@ -1097,11 +1108,69 @@ void MainWindow::ocultarPantallaNivel2()
     }
 }
 
+void MainWindow::mostrarOverlayEstado(const QString &titulo, const QString &texto, const QString &textoBotonPrimario, const std::function<void()> &accionPrimaria, const QString &textoBotonSecundario, const std::function<void()> &accionSecundaria, const QString &textoBotonTerciario, const std::function<void()> &accionTerciaria)
+{
+    if (labelOverlayTitulo == nullptr ||
+        labelOverlayTexto == nullptr ||
+        botonOverlayPrimario == nullptr ||
+        botonOverlaySecundario == nullptr ||
+        botonOverlayTerciario == nullptr) {
+        return;
+    }
+
+    accionOverlayPrimaria = accionPrimaria;
+    accionOverlaySecundaria = accionSecundaria;
+    accionOverlayTerciaria = accionTerciaria;
+
+    labelOverlayTitulo->setText(titulo);
+    labelOverlayTexto->setText(texto);
+    botonOverlayPrimario->setText(textoBotonPrimario);
+    botonOverlaySecundario->setText(textoBotonSecundario);
+    botonOverlayTerciario->setText(textoBotonTerciario);
+
+    labelOverlayTitulo->show();
+    labelOverlayTexto->show();
+    botonOverlayPrimario->show();
+    botonOverlayPrimario->setVisible(!textoBotonPrimario.isEmpty());
+    botonOverlaySecundario->setVisible(!textoBotonSecundario.isEmpty());
+    botonOverlayTerciario->setVisible(!textoBotonTerciario.isEmpty());
+    labelOverlayTitulo->raise();
+    labelOverlayTexto->raise();
+    botonOverlayPrimario->raise();
+    botonOverlaySecundario->raise();
+    botonOverlayTerciario->raise();
+}
+
+void MainWindow::ocultarOverlayEstado()
+{
+    accionOverlayPrimaria = {};
+    accionOverlaySecundaria = {};
+    accionOverlayTerciaria = {};
+
+    if (labelOverlayTitulo != nullptr) {
+        labelOverlayTitulo->hide();
+    }
+
+    if (labelOverlayTexto != nullptr) {
+        labelOverlayTexto->hide();
+    }
+
+    if (botonOverlayPrimario != nullptr) {
+        botonOverlayPrimario->hide();
+    }
+
+    if (botonOverlaySecundario != nullptr) {
+        botonOverlaySecundario->hide();
+    }
+
+    if (botonOverlayTerciario != nullptr) {
+        botonOverlayTerciario->hide();
+    }
+}
+
 void MainWindow::ocultarElementosNivel1()
 {
-    while (!bolasFreezer.isEmpty()) {
-        eliminarBola(bolasFreezer.last());
-    }
+    desactivarBolasFreezer();
 
     if (vegito != nullptr) {
         vegito->setVisible(false);
@@ -1126,19 +1195,13 @@ void MainWindow::ocultarElementosNivel2()
     esperandoLanzamientoBlack = false;
     nivel2DificilActivo = false;
     gogetaKamehamehaActivo = false;
-    danioKamehamehaAplicado = false;
+    dañoKamehamehaAplicado = false;
 
     if (timerNivel2 != nullptr) {
         timerNivel2->stop();
     }
 
-    while (!bolasBlack.isEmpty()) {
-        eliminarBolaBlack(bolasBlack.last());
-    }
-
-    for (int i = 0; i < bolasBlackDisponibles.size(); i++) {
-        bolasBlackDisponibles.at(i)->desactivar();
-    }
+    desactivarBolasBlack();
 
     if (gogeta != nullptr) {
         gogeta->setVisible(false);
@@ -1159,29 +1222,13 @@ void MainWindow::ocultarElementosNivel2()
 void MainWindow::configurarAtaquesFreezer()
 {
     ataquesFreezer.clear();
-    ataquesFreezer.append({3.6f,
-                           1.0f,
-                           ":/images/sprites/bolaFreezer.png",
-                           ":/images/sprites/freezerPitcher.png",
-                           6});
+    ataquesFreezer.append({3.6f,2.0f,":/images/sprites/bolaFreezer.png",":/images/sprites/freezerPitcher.png",6});
 
     if (dificultadSeleccionada == Dificil) {
         ataquesFreezer.clear();
-        ataquesFreezer.append({3.6f,
-                               1.0f,
-                               ":/images/sprites/bolaFreezer.png",
-                               ":/images/sprites/freezerPitcher.png",
-                               6});
-        ataquesFreezer.append({4.3f,
-                               1.5f,
-                               ":/images/sprites/bolaFreezer2.png",
-                               ":/images/sprites/freezerPitcher2.png",
-                               5});
-        ataquesFreezer.append({5.0f,
-                               2.0f,
-                               ":/images/sprites/bolafreezer3.png",
-                               ":/images/sprites/freezerPitcher3.png",
-                               3});
+        ataquesFreezer.append({3.6f,2.0f,":/images/sprites/bolaFreezer.png",":/images/sprites/freezerPitcher.png",6});
+        ataquesFreezer.append({4.3f,2.8f,":/images/sprites/bolaFreezer2.png",":/images/sprites/freezerPitcher2.png",5});
+        ataquesFreezer.append({5.0f,3.6f,":/images/sprites/bolafreezer3.png",":/images/sprites/freezerPitcher3.png",3});
     }
 
     if (freezer != nullptr) {
@@ -1189,19 +1236,78 @@ void MainWindow::configurarAtaquesFreezer()
     }
 }
 
-Proyectil *MainWindow::obtenerBolaDisponible(const Villano::Ataque &ataque, QPointF posicionInicial)
+void MainWindow::desactivarBolasFreezer()
 {
-    Proyectil *bola = nullptr;
-
-    if (!bolasDisponibles.isEmpty()) {
-        bola = bolasDisponibles.takeLast();
-        bola->reiniciar(posicionInicial, ataque.spriteProyectil);
-    }
-    else {
-        bola = new Proyectil(scene, ataque.spriteProyectil, posicionInicial);
+    for (int i = 0; i < bolasFreezer.size(); i++) {
+        if (bolasFreezer.at(i) != nullptr) {
+            bolasFreezer.at(i)->desactivar();
+        }
     }
 
-    bola->configurarAtaque(ataque.velocidad, ataque.dano);
+    bolaControlada = nullptr;
+}
+
+bool MainWindow::hayBolasFreezerActivas() const
+{
+    for (int i = 0; i < bolasFreezer.size(); i++) {
+        if (bolasFreezer.at(i) != nullptr && bolasFreezer.at(i)->estaActiva()) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+void MainWindow::prepararPoolFreezer()
+{
+    if (scene == nullptr) {
+        return;
+    }
+
+    for (int i = 0; i < ataquesFreezer.size(); i++) {
+        const QString ruta = ataquesFreezer.at(i).spriteProyectil;
+        bool yaExiste = false;
+
+        for (int j = 0; j < bolasFreezer.size(); j++) {
+            if (bolasFreezer.at(j) != nullptr &&
+                bolasFreezer.at(j)->getRutaSprite() == ruta) {
+                yaExiste = true;
+                break;
+            }
+        }
+
+        if (!yaExiste) {
+            Proyectil *bola = new Proyectil(scene, ruta, QPointF(-200, -200));
+            bola->desactivar();
+            bolasFreezer.append(bola);
+        }
+    }
+}
+
+Proyectil *MainWindow::obtenerBolaFreezer(const Villano::Ataque &ataque, QPointF posicionInicial)
+{
+    for (int i = 0; i < bolasFreezer.size(); i++) {
+        Proyectil *bola = bolasFreezer.at(i);
+
+        if (bola != nullptr &&
+            !bola->estaActiva() &&
+            bola->getRutaSprite() == ataque.spriteProyectil) {
+            bola->reiniciar(posicionInicial, ataque.spriteProyectil);
+            bola->configurarAtaque(ataque.velocidad, ataque.daño);
+            return bola;
+        }
+    }
+    for (int i = 0; i < bolasFreezer.size(); i++) {
+        Proyectil *bola = bolasFreezer.at(i);
+
+        if (bola != nullptr && bola->getRutaSprite() == ataque.spriteProyectil) {
+            return nullptr;
+        }
+    }
+
+    Proyectil *bola = new Proyectil(scene, ataque.spriteProyectil, posicionInicial);
+    bola->configurarAtaque(ataque.velocidad, ataque.daño);
+    bolasFreezer.append(bola);
     return bola;
 }
 
@@ -1213,7 +1319,7 @@ void MainWindow::programarSiguienteLanzamiento()
 
     esperandoLanzamientos = true;
 
-    if (rachaDanio >= 12.0f) {
+    if (rachaDaño >= 12.0f) {
         bolasPendientesPorLanzar = 2;
         QTimer::singleShot(2000, this, &MainWindow::lanzarBolaFreezer);
         QTimer::singleShot(4000, this, &MainWindow::lanzarBolaFreezer);
@@ -1224,7 +1330,7 @@ void MainWindow::programarSiguienteLanzamiento()
     }
 }
 
-void MainWindow::lanzarBolaFreezer()
+void MainWindow::lanzarBolaFreezer() try
 {
     if (!nivel1Activo || scene == nullptr || freezer == nullptr) {
         return;
@@ -1236,7 +1342,6 @@ void MainWindow::lanzarBolaFreezer()
     }
 
     Villano::Ataque ataque = freezer->elegirAtaque();
-    freezer->reproducirAtaqueActual();
     bolasPendientesPorLanzar--;
 
     if (bolasPendientesPorLanzar <= 0) {
@@ -1244,19 +1349,33 @@ void MainWindow::lanzarBolaFreezer()
     }
 
     QTimer::singleShot(220, this, [this, ataque]() {
-        if (!nivel1Activo || scene == nullptr || freezer == nullptr) {
-            return;
+        try {
+            if (!nivel1Activo || scene == nullptr || freezer == nullptr) {
+                return;
+            }
+
+            QPointF posicionInicial = freezer->getSprite()->sceneBoundingRect().center();
+            posicionInicial.setY(posicionInicial.y() + 45);
+
+            Proyectil *nuevaBola = obtenerBolaFreezer(ataque, posicionInicial);
+
+            if (nuevaBola == nullptr) {
+                return;
+            }
+
+            freezer->reproducirAtaqueActual();
         }
-
-        QPointF posicionInicial = freezer->getSprite()->sceneBoundingRect().center();
-        posicionInicial.setY(posicionInicial.y() + 45);
-
-        Proyectil *nuevaBola = obtenerBolaDisponible(ataque, posicionInicial);
-        bolasFreezer.append(nuevaBola);
+        catch (const std::exception &error) {
+            manejarErrorJuego("No se pudo crear el proyectil de Freezer.", error);
+        }
     });
 }
+catch (const std::exception &error)
+{
+    manejarErrorJuego("No se pudo lanzar la bola de Freezer.", error);
+}
 
-void MainWindow::actualizarNivel1()
+void MainWindow::actualizarNivel1() try
 {
     if (!nivel1Activo) {
         return;
@@ -1277,6 +1396,10 @@ void MainWindow::actualizarNivel1()
     for (int i = bolasFreezer.size() - 1; i >= 0; i--) {
         Proyectil *bola = bolasFreezer.at(i);
 
+        if (bola == nullptr || !bola->estaActiva()) {
+            continue;
+        }
+
         if (bola->getEstado() == Proyectil::LanzadaPorFreezer) {
             float velocidadAtaque = velocidadFreezer;
 
@@ -1287,10 +1410,10 @@ void MainWindow::actualizarNivel1()
             bola->moverLanzamiento(velocidadAtaque, lanzamientoOscilatorio);
 
             if (bola->pasoLinea(vegito->getSprite()->y() + 70)) {
-                vegito->recibirDanio(bola->getDanoAtaque());
+                vegito->recibirDaño(bola->getDañoAtaque());
                 vegito->reproducirImpacto();
                 freezer->aprender(false);
-                rachaDanio = 0.0f;
+                rachaDaño = 0.0f;
 
                 eliminarBola(bola);
                 actualizarHUD();
@@ -1322,14 +1445,16 @@ void MainWindow::actualizarNivel1()
         }
     }
 
-    actualizarHUD();
-
-    if (bolasFreezer.isEmpty() && !esperandoLanzamientos) {
+    if (!hayBolasFreezerActivas() && !esperandoLanzamientos) {
         programarSiguienteLanzamiento();
     }
 }
+catch (const std::exception &error)
+{
+    manejarErrorJuego("Ocurrio un error durante la actualizacion del Nivel 1.", error);
+}
 
-void MainWindow::actualizarNivel2()
+void MainWindow::actualizarNivel2() try
 {
     if (!nivel2Activo || nivel2EnPausa || gogeta == nullptr || gokuBlack == nullptr) {
         return;
@@ -1358,26 +1483,24 @@ void MainWindow::actualizarNivel2()
     for (int i = bolasBlack.size() - 1; i >= 0; i--) {
         Proyectil *bola = bolasBlack.at(i);
 
-        const float factorVelocidad = bola->getVelocidadAtaque() / 3.6f;
-        const bool esAtaqueEspecial = nivel2DificilActivo && bola->getDanoAtaque() >= 3.0f;
+        if (bola == nullptr || !bola->estaActiva()) {
+            continue;
+        }
 
-        bola->actualizarBateo(dt * factorVelocidad);
+        const bool esAtaqueEspecial = nivel2DificilActivo && bola->getDañoAtaque() >= 3.0f;
+        const float factorVelocidadBase = bola->getVelocidadAtaque() / 3.6f;
+        const float factorDificultadCaida = (nivel2DificilActivo && !esAtaqueEspecial) ? 1.28f : 1.0f;
+
+        bola->actualizarBateo(dt * factorVelocidadBase * factorDificultadCaida);
         actualizarBonificacionAro(bola, esAtaqueEspecial);
 
-        /*
-            Si Gogeta toca una pelota normal, cuenta como atrapada.
-            Si toca un ataque especial, recibe daño.
-        */
         if (spriteColisionaConProyectil(gogeta, bola)) {
             if (esAtaqueEspecial) {
-                aplicarDanioGogetaNivel2(18.0f);
+                aplicarDañoGogetaNivel2(18.0f);
             }
             else {
                 pelotasAtrapadasNivel2 += bola->getValorPuntaje();
-                /*
-                    La carga del Kamehameha NO se reinicia con pelotas caídas.
-                    Solo aumenta cuando Gogeta atrapa pelotas.
-                */
+
                 if (nivel2DificilActivo &&
                     cargaKamehamehaNivel2 < cargaMaximaKamehamehaNivel2) {
                     cargaKamehamehaNivel2 = qMin(cargaMaximaKamehamehaNivel2,
@@ -1389,7 +1512,7 @@ void MainWindow::actualizarNivel2()
                     outsNivel2++;
 
                     if (nivel2DificilActivo) {
-                        aplicarDanioBlackNivel2(12.0f);
+                        aplicarDañoBlackNivel2(12.0f);
                     }
                 }
             }
@@ -1399,18 +1522,24 @@ void MainWindow::actualizarNivel2()
             actualizarTextoNivel2();
 
             if (outsNivel2 >= metaNivel2) {
-                finalizarNivel2("Gogeta gana con " + QString::number(metaNivel2) + " outs. Vuelve a entrar al nivel 2 para jugar otra vez.");
+                finalizarNivel2("Victoria de Gogeta",
+                                "Gogeta gano con " + QString::number(metaNivel2) + " outs.\n\nPuedes volver al selector del Nivel 2 o jugar otra vez con la misma dificultad.",
+                                true);
                 return;
             }
 
             if (nivel2DificilActivo) {
                 if (vidaGogetaNivel2 <= 0.0f) {
-                    finalizarNivel2("Goku Black vacio la vida de Gogeta. Vuelve a entrar al nivel 2 para reintentar.");
+                    finalizarNivel2("Goku Black gana",
+                                    "Goku Black vacio la vida de Gogeta.\n\nConviene reintentar de inmediato para mantener el ritmo del combate.",
+                                    true);
                     return;
                 }
 
                 if (vidaBlackNivel2 <= 0.0f) {
-                    finalizarNivel2("Gogeta derroto a Goku Black. Vuelve a entrar al nivel 2 para jugar otra vez.");
+                    finalizarNivel2("Gogeta derrota a Black",
+                                    "Goku Black fue derrotado en el modo dificil.\n\nPuedes repetir el duelo o volver al selector del Nivel 2.",
+                                    true);
                     return;
                 }
             }
@@ -1418,14 +1547,6 @@ void MainWindow::actualizarNivel2()
             continue;
         }
 
-        /*
-            Si la pelota normal cae y Gogeta no la atrapa:
-            - Se reinicia la racha de atrapadas.
-            - Black suma una pelota perdida.
-            - Cada 3 pelotas perdidas, Black suma una carrera.
-
-            La carga del Kamehameha no se reinicia.
-        */
         if (bola->terminoVuelo()) {
             eliminarBolaBlack(bola);
 
@@ -1437,7 +1558,7 @@ void MainWindow::actualizarNivel2()
                     carrerasBlackNivel2++;
 
                     if (nivel2DificilActivo) {
-                        aplicarDanioGogetaNivel2(12.0f);
+                        aplicarDañoGogetaNivel2(12.0f);
                     }
                 }
             }
@@ -1446,27 +1567,37 @@ void MainWindow::actualizarNivel2()
             actualizarTextoNivel2();
 
             if (carrerasBlackNivel2 >= metaNivel2) {
-                finalizarNivel2("Goku Black gana con " + QString::number(metaNivel2) + " carreras. Vuelve a entrar al nivel 2 para reintentar.");
+                finalizarNivel2("Goku Black gana",
+                                "Black completo " + QString::number(metaNivel2) + " carreras antes que Gogeta.\n\nPuedes reintentar el nivel desde esta misma pantalla.",
+                                true);
                 return;
             }
 
             if (nivel2DificilActivo) {
                 if (vidaGogetaNivel2 <= 0.0f) {
-                    finalizarNivel2("Goku Black vacio la vida de Gogeta. Vuelve a entrar al nivel 2 para reintentar.");
+                    finalizarNivel2("Goku Black gana",
+                                    "Goku Black vacio la vida de Gogeta.\n\nConviene reintentar de inmediato para mantener el ritmo del combate.",
+                                    true);
                     return;
                 }
 
                 if (vidaBlackNivel2 <= 0.0f) {
-                    finalizarNivel2("Gogeta derroto a Goku Black. Vuelve a entrar al nivel 2 para jugar otra vez.");
+                    finalizarNivel2("Gogeta derrota a Black",
+                                    "Goku Black fue derrotado en el modo dificil.\n\nPuedes repetir el duelo o volver al selector del Nivel 2.",
+                                    true);
                     return;
                 }
             }
         }
     }
 
-    if (nivel2Activo && bolasBlack.isEmpty() && !gogetaKamehamehaActivo) {
+    if (nivel2Activo && !hayBolasBlackActivas() && !gogetaKamehamehaActivo) {
         programarSiguienteLanzamientoBlack();
     }
+}
+catch (const std::exception &error)
+{
+    manejarErrorJuego("Ocurrio un error durante la actualizacion del Nivel 2.", error);
 }
 
 void MainWindow::actualizarBonificacionAro(Proyectil *bola, bool esAtaqueEspecial)
@@ -1489,10 +1620,6 @@ void MainWindow::actualizarBlackDificil(int dtMs)
     tiempoMovimientoBlackDificilMs += dtMs;
     tiempoAtaqueEspecialBlackMs += dtMs;
 
-    /*
-        Black permanece en la mitad derecha, pero sigue suavemente
-        el movimiento vertical de Gogeta.
-    */
     const QRectF recta = scene->sceneRect();
     const qreal posicionX = recta.right() - 160.0;
     const qreal posicionActualYBlack = gokuBlack->getSprite()->pos().y();
@@ -1505,10 +1632,6 @@ void MainWindow::actualizarBlackDificil(int dtMs)
     const qreal nuevaY = posicionActualYBlack + (destinoY - posicionActualYBlack) * 0.08;
     gokuBlack->setPos(posicionX, nuevaY);
 
-    /*
-        Cambio visual de sprite de Black según suba o baje.
-        Se hace cada cierto tiempo para no recargar sprites en cada frame.
-    */
     if (tiempoMovimientoBlackDificilMs >= 700) {
         tiempoMovimientoBlackDificilMs = 0;
 
@@ -1522,25 +1645,24 @@ void MainWindow::actualizarBlackDificil(int dtMs)
         gokuBlack->getSprite()->reiniciarAnimacion();
 
         QTimer::singleShot(220, this, [this]() {
-            if (!nivel2Activo || !nivel2DificilActivo || gokuBlack == nullptr) {
-                return;
-            }
+            try {
+                if (!nivel2Activo || !nivel2DificilActivo || gokuBlack == nullptr) {
+                    return;
+                }
 
-            gokuBlack->getSprite()->cambiarSprite(":/images/sprites/black_dificil_quieto.png", 1);
-            gokuBlack->getSprite()->reiniciarAnimacion();
+                gokuBlack->getSprite()->cambiarSprite(":/images/sprites/black_dificil_quieto.png", 1);
+                gokuBlack->getSprite()->reiniciarAnimacion();
+            }
+            catch (const std::exception &error) {
+                manejarErrorJuego("No se pudo restaurar el sprite de Goku Black.", error);
+            }
         });
     }
 
-    /*
-        Ataque especial de Black.
-
-        No se lanza si todavía hay una pelota/ataque en pantalla.
-        Así no se acumulan ataques antes de que caiga la pelota anterior.
-    */
     const int tiempoEspecial = 4200 + QRandomGenerator::global()->bounded(0, 1600);
 
     if (tiempoAtaqueEspecialBlackMs >= tiempoEspecial &&
-        bolasBlack.isEmpty() &&
+        !hayBolasBlackActivas() &&
         !gogetaKamehamehaActivo) {
 
         tiempoAtaqueEspecialBlackMs = 0;
@@ -1548,7 +1670,7 @@ void MainWindow::actualizarBlackDificil(int dtMs)
     }
 }
 
-void MainWindow::lanzarAtaqueEspecialBlack()
+void MainWindow::lanzarAtaqueEspecialBlack() try
 {
     if (!nivel2Activo ||
         !nivel2DificilActivo ||
@@ -1556,7 +1678,7 @@ void MainWindow::lanzarAtaqueEspecialBlack()
         gokuBlack == nullptr ||
         gogeta == nullptr ||
         scene == nullptr ||
-        !bolasBlack.isEmpty() ||
+        hayBolasBlackActivas() ||
         gogetaKamehamehaActivo) {
         return;
     }
@@ -1575,45 +1697,55 @@ void MainWindow::lanzarAtaqueEspecialBlack()
     }
 
     QTimer::singleShot(180, this, [this]() {
-        if (!nivel2Activo ||
-            !nivel2DificilActivo ||
-            nivel2EnPausa ||
-            scene == nullptr ||
-            gokuBlack == nullptr ||
-            gogeta == nullptr ||
-            !bolasBlack.isEmpty()) {
-            return;
+        try {
+            if (!nivel2Activo ||
+                !nivel2DificilActivo ||
+                nivel2EnPausa ||
+                scene == nullptr ||
+                gokuBlack == nullptr ||
+                gogeta == nullptr ||
+                hayBolasBlackActivas()) {
+                return;
+            }
+
+            QPointF posicionInicial = gokuBlack->getSprite()->sceneBoundingRect().center();
+            posicionInicial.setX(posicionInicial.x() - 45);
+
+            QPointF destino = gogeta->sceneBoundingRect().center();
+            destino.setY(destino.y() + QRandomGenerator::global()->bounded(-35, 36));
+
+            Proyectil *rafaga = obtenerBolaBlack(":/images/sprites/rafaga_black_dificil.png",
+                                                 posicionInicial);
+
+            if (rafaga == nullptr) {
+                return;
+            }
+
+            rafaga->configurarAtaque(6.8f, 4.0f);
+            rafaga->iniciarBateo(destino.x(), destino.y());
         }
-
-        QPointF posicionInicial = gokuBlack->getSprite()->sceneBoundingRect().center();
-        posicionInicial.setX(posicionInicial.x() - 45);
-
-        QPointF destino = gogeta->sceneBoundingRect().center();
-        destino.setY(destino.y() + QRandomGenerator::global()->bounded(-35, 36));
-
-        Proyectil *rafaga = nullptr;
-
-        if (!bolasBlackDisponibles.isEmpty()) {
-            rafaga = bolasBlackDisponibles.takeLast();
-            rafaga->reiniciar(posicionInicial, ":/images/sprites/rafaga_black_dificil.png");
+        catch (const std::exception &error) {
+            manejarErrorJuego("No se pudo crear la rafaga especial de Goku Black.", error);
         }
-        else {
-            rafaga = new Proyectil(scene, ":/images/sprites/rafaga_black_dificil.png", posicionInicial);
-        }
-
-        rafaga->configurarAtaque(6.8f, 4.0f);
-        rafaga->iniciarBateo(destino.x(), destino.y());
-        bolasBlack.append(rafaga);
     });
 
     QTimer::singleShot(620, this, [this]() {
-        if (!nivel2Activo || !nivel2DificilActivo || gokuBlack == nullptr) {
-            return;
-        }
+        try {
+            if (!nivel2Activo || !nivel2DificilActivo || gokuBlack == nullptr) {
+                return;
+            }
 
-        gokuBlack->getSprite()->cambiarSprite(":/images/sprites/black_dificil_quieto.png", 1);
-        gokuBlack->getSprite()->reiniciarAnimacion();
+            gokuBlack->getSprite()->cambiarSprite(":/images/sprites/black_dificil_quieto.png", 1);
+            gokuBlack->getSprite()->reiniciarAnimacion();
+        }
+        catch (const std::exception &error) {
+            manejarErrorJuego("No se pudo restaurar el sprite de Goku Black despues del ataque.", error);
+        }
     });
+}
+catch (const std::exception &error)
+{
+    manejarErrorJuego("No se pudo lanzar el ataque especial de Black.", error);
 }
 
 void MainWindow::actualizarKamehamehaGogeta(int dtMs)
@@ -1633,7 +1765,17 @@ void MainWindow::actualizarKamehamehaGogeta(int dtMs)
     else {
         if (!rafagaFinalKamehamehaLanzada && scene != nullptr) {
             QPixmap pixmap(":/images/sprites/rafaga_final_kamehameha.png");
+
+            if (pixmap.isNull()) {
+                throw std::runtime_error("No se pudo cargar el sprite de la rafaga Final Kamehameha.");
+            }
+
             pixmap = pixmap.scaled(300, 114, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+
+            if (pixmap.isNull()) {
+                throw std::runtime_error("No se pudo escalar el sprite de la rafaga Final Kamehameha.");
+            }
+
             rafagaFinalKamehameha = scene->addPixmap(pixmap);
             rafagaFinalKamehameha->setOffset(-pixmap.width() * 0.15, -pixmap.height() / 2.0);
             rafagaFinalKamehameha->setZValue(17);
@@ -1650,10 +1792,10 @@ void MainWindow::actualizarKamehamehaGogeta(int dtMs)
             gogetaKamehamehaActivo = false;
             tiempoRetencionKamehamehaMs = 0;
             tiempoAnimacionGogetaMs = 0;
-            danioKamehamehaAplicado = false;
+            dañoKamehamehaAplicado = false;
             rutaSpriteGogetaActual = rutaSpriteGogetaDireccion;
             gogeta->cambiarSprite(rutaSpriteGogetaActual, 3);
-            gogeta->fijarTamanoVisual(anchoVisualGogeta, altoVisualGogeta);
+            gogeta->fijarTamañoVisual(anchoVisualGogeta, altoVisualGogeta);
             gogeta->reiniciarAnimacion();
             gogeta->setPos(posicionGogetaX, posicionActualGogetaY);
         }
@@ -1663,33 +1805,33 @@ void MainWindow::actualizarKamehamehaGogeta(int dtMs)
 void MainWindow::revisarCaidaBola(Proyectil *bola)
 {
     QPointF posicionCaida = bola->centro();
-    float danoFreezer = calcularDanioFreezer(posicionCaida);
+    float dañoFreezer = calcularDañoFreezer(posicionCaida);
 
-    if (danoFreezer > 0.0f) {
-        freezer->recibirDanio(danoFreezer);
+    if (dañoFreezer > 0.0f) {
+        freezer->recibirDaño(dañoFreezer);
         freezer->reproducirImpacto();
-        rachaDanio += danoFreezer;
+        rachaDaño += dañoFreezer;
     }
     else {
-        vegito->recibirDanio(0.5f);
+        vegito->recibirDaño(0.5f);
         vegito->reproducirImpacto();
-        rachaDanio = 0.0f;
+        rachaDaño = 0.0f;
     }
 
     actualizarDificultad();
 }
 
-float MainWindow::calcularDanioFreezer(const QPointF &posicionCaida) const
+float MainWindow::calcularDañoFreezer(const QPointF &posicionCaida) const
 {
-    if (zonaDanioAlto.contienePunto(posicionCaida)) {
+    if (zonaDañoAlto.contienePunto(posicionCaida)) {
         return 30.0f;
     }
 
-    if (zonaDanioMedio.contienePunto(posicionCaida)) {
+    if (zonaDañoMedio.contienePunto(posicionCaida)) {
         return 20.0f;
     }
 
-    if (zonaDanioBajo.contienePunto(posicionCaida)) {
+    if (zonaDañoBajo.contienePunto(posicionCaida)) {
         return 10.0f;
     }
 
@@ -1741,37 +1883,27 @@ void MainWindow::eliminarBola(Proyectil *bola)
         return;
     }
 
-    bolasFreezer.removeOne(bola);
-
     if (bolaControlada == bola) {
         bolaControlada = nullptr;
     }
 
     bola->desactivar();
-
-    if (!bolasDisponibles.contains(bola)) {
-        bolasDisponibles.append(bola);
-    }
 }
 
 void MainWindow::actualizarHUD()
 {
     if (nivel2DificilActivo) {
-        barraVidaJugador.actualizarBarraVida(vidaGogetaNivel2,
-                                             vidaMaximaGogetaNivel2);
-        barraVidaEnemigo.actualizarBarraVida(vidaBlackNivel2,
-                                             vidaMaximaBlackNivel2);
+        barraVidaJugador.actualizarBarraVida(vidaGogetaNivel2,vidaMaximaGogetaNivel2);
+        barraVidaEnemigo.actualizarBarraVida(vidaBlackNivel2,vidaMaximaBlackNivel2);
         return;
     }
 
     if (vegito != nullptr) {
-        barraVidaJugador.actualizarBarraVida(vegito->getVidaActual(),
-                                             vegito->getVidaMaxima());
+        barraVidaJugador.actualizarBarraVida(vegito->getVidaActual(),vegito->getVidaMaxima());
     }
 
     if (freezer != nullptr) {
-        barraVidaEnemigo.actualizarBarraVida(freezer->getVidaActual(),
-                                             freezer->getVidaMaxima());
+        barraVidaEnemigo.actualizarBarraVida(freezer->getVidaActual(),freezer->getVidaMaxima());
     }
 
     if (textoEstadoKaioken != nullptr) {
@@ -1794,22 +1926,29 @@ void MainWindow::ganarNivel1()
         timerNivel1->stop();
     }
 
-    while (!bolasFreezer.isEmpty()) {
-        eliminarBola(bolasFreezer.last());
+    desactivarBolasFreezer();
+    setVisibleHUDVida(false);
+
+    if (textoEstadoKaioken != nullptr) {
+        textoEstadoKaioken->setVisible(false);
     }
 
-    mensajeTransicionNivel1.crearTextoEscena(scene,
-                                             scene->sceneRect().center().x() - 190,
-                                             scene->sceneRect().center().y() - 35,
-                                             "Freezer derrotado\nPreparando Nivel 2...",
-                                             QColor(255, 240, 170),
-                                             22,
-                                             true);
-
-    QTimer::singleShot(1400, this, [this]() {
-        mensajeTransicionNivel1.destruir();
-        mostrarPantallaNivel2();
-    });
+    mostrarOverlayEstado("Nivel 1 completado",
+                         "Freezer fue derrotado.\n\nToma un respiro antes del siguiente combate y elige la dificultad del Nivel 2 cuando quieras continuar.",
+                         "Ir al Nivel 2",
+                         [this]() {
+                             ocultarOverlayEstado();
+                             mostrarPantallaNivel2();
+                         },
+                         "Jugar Nivel 1 otra vez",
+                         [this]() {
+                             ocultarOverlayEstado();
+                             iniciarNivel1();
+                         },
+                         "Volver al inicio",
+                         [this]() {
+                             volverAlMenuPrincipal();
+                         });
 }
 
 void MainWindow::perderNivel1()
@@ -1822,15 +1961,24 @@ void MainWindow::perderNivel1()
         timerNivel1->stop();
     }
 
-    while (!bolasFreezer.isEmpty()) {
-        eliminarBola(bolasFreezer.last());
+    desactivarBolasFreezer();
+    setVisibleHUDVida(false);
+
+    if (textoEstadoKaioken != nullptr) {
+        textoEstadoKaioken->setVisible(false);
     }
 
-    QGraphicsTextItem *mensaje = scene->addText("PERDISTE");
-    mensaje->setDefaultTextColor(Qt::red);
-    mensaje->setScale(3);
-    mensaje->setPos(540, 330);
-    mensaje->setZValue(20);
+    mostrarOverlayEstado("Nivel 1 perdido",
+                         "Vegito se quedo sin vida.\n\nPuedes reintentar el nivel de inmediato o volver al menu principal.",
+                         "Reintentar Nivel 1",
+                         [this]() {
+                             ocultarOverlayEstado();
+                             iniciarNivel1();
+                         },
+                         "Volver al inicio",
+                         [this]() {
+                             volverAlMenuPrincipal();
+                         });
 }
 
 void MainWindow::iniciarVariablesNivel2()
@@ -1849,7 +1997,7 @@ void MainWindow::iniciarVariablesNivel2()
     cargaKamehamehaNivel2 = 0;
     gogetaSaltando = false;
     gogetaKamehamehaActivo = false;
-    danioKamehamehaAplicado = false;
+    dañoKamehamehaAplicado = false;
     rafagaFinalKamehamehaLanzada = false;
     moverGogetaIzquierdaActivo = false;
     moverGogetaDerechaActivo = false;
@@ -1859,18 +2007,27 @@ void MainWindow::iniciarVariablesNivel2()
     vidaBlackNivel2 = vidaMaximaBlackNivel2;
 
     const QRectF rectaNivel2 = scene != nullptr ? scene->sceneRect() : QRectF();
-    const QRectF rectaAro(rectaNivel2.left() + rectaNivel2.width() * 0.455,
-                          rectaNivel2.top() + rectaNivel2.height() * 0.30,
-                          rectaNivel2.width() * 0.048,
-                          rectaNivel2.height() * 0.19);
+    const QRectF rectaAro(rectaNivel2.left() + rectaNivel2.width() * 0.455,rectaNivel2.top() + rectaNivel2.height() * 0.30,rectaNivel2.width() * 0.048,rectaNivel2.height() * 0.19);
     aroNivel2.crearHitboxEliptica(scene, rectaAro);
 
-    while (!bolasBlack.isEmpty()) {
-        eliminarBolaBlack(bolasBlack.last());
-    }
+    desactivarBolasBlack();
 
-    for (int i = 0; i < bolasBlackDisponibles.size(); i++) {
-        bolasBlackDisponibles.at(i)->desactivar();
+    if (nivel2DificilActivo) {
+        Proyectil *bolaNormal = obtenerBolaBlack(":/images/sprites/bolaBlack_actualizada.png", QPointF(-300, -300));
+        if (bolaNormal != nullptr) {
+            bolaNormal->desactivar();
+        }
+
+        Proyectil *rafagaBlack = obtenerBolaBlack(":/images/sprites/rafaga_black_dificil.png", QPointF(-300, -300));
+        if (rafagaBlack != nullptr) {
+            rafagaBlack->desactivar();
+        }
+    }
+    else {
+        Proyectil *bolaNormal = obtenerBolaBlack(":/images/sprites/bolaBlack_actualizada.png", QPointF(-300, -300));
+        if (bolaNormal != nullptr) {
+            bolaNormal->desactivar();
+        }
     }
 
     if (textoEstadoNivel2 == nullptr) {
@@ -1906,29 +2063,22 @@ void MainWindow::programarSiguienteLanzamientoBlack()
         esperandoLanzamientoBlack ||
         scene == nullptr ||
         gokuBlack == nullptr ||
-        !bolasBlack.isEmpty() ||
+        hayBolasBlackActivas() ||
         gogetaKamehamehaActivo) {
         return;
     }
 
     esperandoLanzamientoBlack = true;
 
-    /*
-        Tiempo aleatorio entre lanzamientos.
 
-        Se deja una pausa un poco mayor para que Black no lance una pelota
-        antes de que la anterior haya terminado su recorrido.
-    */
-    const int esperaMs = nivel2DificilActivo
-                             ? QRandomGenerator::global()->bounded(900, 1500)
-                             : QRandomGenerator::global()->bounded(900, 1700);
+    const int esperaMs = nivel2DificilActivo ? QRandomGenerator::global()->bounded(900, 1500): QRandomGenerator::global()->bounded(900, 1700);
 
     QTimer::singleShot(esperaMs, this, [this]() {
         esperandoLanzamientoBlack = false;
 
         if (!nivel2Activo ||
             nivel2EnPausa ||
-            !bolasBlack.isEmpty() ||
+            hayBolasBlackActivas() ||
             gogetaKamehamehaActivo) {
             return;
         }
@@ -1937,7 +2087,7 @@ void MainWindow::programarSiguienteLanzamientoBlack()
     });
 }
 
-void MainWindow::lanzarBolaBlack()
+void MainWindow::lanzarBolaBlack() try
 {
     if (!nivel2Activo || nivel2EnPausa || scene == nullptr || gokuBlack == nullptr || gogeta == nullptr) {
         return;
@@ -1959,32 +2109,36 @@ void MainWindow::lanzarBolaBlack()
     gokuBlack->reproducirAtaqueActual();
 
     QTimer::singleShot(220, this, [this, ataque, destino, posicionBaseX, posicionBaseY]() {
-        if (!nivel2Activo || nivel2EnPausa || scene == nullptr || gokuBlack == nullptr) {
-            return;
+        try {
+            if (!nivel2Activo || nivel2EnPausa || scene == nullptr || gokuBlack == nullptr) {
+                return;
+            }
+
+            gokuBlack->setPos(posicionBaseX, posicionBaseY);
+
+            QPointF posicionInicial = gokuBlack->getSprite()->sceneBoundingRect().center();
+            posicionInicial.setX(posicionInicial.x() - 45);
+
+            Proyectil *bola = obtenerBolaBlack(ataque.spriteProyectil, posicionInicial);
+
+            if (bola == nullptr) {
+                return;
+            }
+
+            const float velocidadLanzamiento = qMax(4.0f,
+                                                    ataque.velocidad +
+                                                    static_cast<float>(QRandomGenerator::global()->bounded(-6, 9)) * 0.12f);
+            bola->configurarAtaque(velocidadLanzamiento, ataque.daño);
+            bola->iniciarBateo(destino.x(), destino.y());
         }
-
-        gokuBlack->setPos(posicionBaseX, posicionBaseY);
-
-        QPointF posicionInicial = gokuBlack->getSprite()->sceneBoundingRect().center();
-        posicionInicial.setX(posicionInicial.x() - 45);
-
-        Proyectil *bola = nullptr;
-
-        if (!bolasBlackDisponibles.isEmpty()) {
-            bola = bolasBlackDisponibles.takeLast();
-            bola->reiniciar(posicionInicial, ataque.spriteProyectil);
+        catch (const std::exception &error) {
+            manejarErrorJuego("No se pudo crear el proyectil de Goku Black.", error);
         }
-        else {
-            bola = new Proyectil(scene, ataque.spriteProyectil, posicionInicial);
-        }
-
-        const float velocidadLanzamiento = qMax(4.0f,
-                                                ataque.velocidad +
-                                                static_cast<float>(QRandomGenerator::global()->bounded(-6, 9)) * 0.12f);
-        bola->configurarAtaque(velocidadLanzamiento, ataque.dano);
-        bola->iniciarBateo(destino.x(), destino.y());
-        bolasBlack.append(bola);
     });
+}
+catch (const std::exception &error)
+{
+    manejarErrorJuego("No se pudo lanzar la bola de Goku Black.", error);
 }
 
 void MainWindow::eliminarBolaBlack(Proyectil *bola)
@@ -1993,12 +2147,53 @@ void MainWindow::eliminarBolaBlack(Proyectil *bola)
         return;
     }
 
-    bolasBlack.removeOne(bola);
     bola->desactivar();
+}
 
-    if (!bolasBlackDisponibles.contains(bola)) {
-        bolasBlackDisponibles.append(bola);
+void MainWindow::desactivarBolasBlack()
+{
+    for (int i = 0; i < bolasBlack.size(); i++) {
+        if (bolasBlack.at(i) != nullptr) {
+            bolasBlack.at(i)->desactivar();
+        }
     }
+}
+
+bool MainWindow::hayBolasBlackActivas() const
+{
+    for (int i = 0; i < bolasBlack.size(); i++) {
+        if (bolasBlack.at(i) != nullptr && bolasBlack.at(i)->estaActiva()) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+Proyectil *MainWindow::obtenerBolaBlack(const QString &rutaSprite, QPointF posicionInicial)
+{
+    for (int i = 0; i < bolasBlack.size(); i++) {
+        Proyectil *bola = bolasBlack.at(i);
+
+        if (bola != nullptr &&
+            !bola->estaActiva() &&
+            bola->getRutaSprite() == rutaSprite) {
+            bola->reiniciar(posicionInicial, rutaSprite);
+            return bola;
+        }
+    }
+
+    for (int i = 0; i < bolasBlack.size(); i++) {
+        Proyectil *bola = bolasBlack.at(i);
+
+        if (bola != nullptr && bola->getRutaSprite() == rutaSprite) {
+            return nullptr;
+        }
+    }
+
+    Proyectil *bola = new Proyectil(scene, rutaSprite, posicionInicial);
+    bolasBlack.append(bola);
+    return bola;
 }
 
 void MainWindow::actualizarSaltoGogeta(int dtMs)
@@ -2027,7 +2222,7 @@ void MainWindow::actualizarSaltoGogeta(int dtMs)
         tiempoAnimacionGogetaMs = 0;
         rutaSpriteGogetaActual = rutaSpriteGogetaDireccion;
         gogeta->cambiarSprite(rutaSpriteGogetaActual, 3);
-        gogeta->fijarTamanoVisual(anchoVisualGogeta, altoVisualGogeta);
+        gogeta->fijarTamañoVisual(anchoVisualGogeta, altoVisualGogeta);
         gogeta->reiniciarAnimacion();
         gogeta->setPos(posicionGogetaX, posicionActualGogetaY);
         return;
@@ -2096,25 +2291,25 @@ void MainWindow::actualizarTextoNivel2()
         );
 }
 
-void MainWindow::aplicarDanioGogetaNivel2(qreal dano)
+void MainWindow::aplicarDañoGogetaNivel2(qreal daño)
 {
-    vidaGogetaNivel2 -= dano;
+    vidaGogetaNivel2 -= daño;
 
     if (vidaGogetaNivel2 < 0.0) {
         vidaGogetaNivel2 = 0.0;
     }
 }
 
-void MainWindow::aplicarDanioBlackNivel2(qreal dano)
+void MainWindow::aplicarDañoBlackNivel2(qreal daño)
 {
-    vidaBlackNivel2 -= dano;
+    vidaBlackNivel2 -= daño;
 
     if (vidaBlackNivel2 < 0.0) {
         vidaBlackNivel2 = 0.0;
     }
 }
 
-void MainWindow::dispararFinalKamehameha()
+void MainWindow::dispararFinalKamehameha() try
 {
     if (!nivel2Activo ||
         !nivel2DificilActivo ||
@@ -2126,7 +2321,7 @@ void MainWindow::dispararFinalKamehameha()
 
     gogetaKamehamehaActivo = true;
     reproducirAudioFinalKamehameha();
-    danioKamehamehaAplicado = false;
+    dañoKamehamehaAplicado = false;
     rafagaFinalKamehamehaLanzada = false;
     tiempoAnimacionGogetaMs = 0;
     tiempoRetencionKamehamehaMs = 0;
@@ -2134,11 +2329,15 @@ void MainWindow::dispararFinalKamehameha()
     cargaKamehamehaNivel2 = 0;
     rutaSpriteGogetaActual = ":/images/sprites/final_kamehameha.png";
     gogeta->cambiarSprite(rutaSpriteGogetaActual, 7);
-    gogeta->fijarTamanoVisual(108.0, 142.0);
+    gogeta->fijarTamañoVisual(108.0, 142.0);
 
     gogeta->reiniciarAnimacion();
     gogeta->setPos(posicionGogetaX + 22.0, posicionActualGogetaY);
     actualizarTextoNivel2();
+}
+catch (const std::exception &error)
+{
+    manejarErrorJuego("No se pudo ejecutar el Final Kamehameha.", error);
 }
 
 void MainWindow::actualizarRafagaFinalKamehameha()
@@ -2149,17 +2348,19 @@ void MainWindow::actualizarRafagaFinalKamehameha()
 
     rafagaFinalKamehameha->moveBy(velocidadRafagaFinalKamehameha, 0.0);
 
-    if (!danioKamehamehaAplicado &&
+    if (!dañoKamehamehaAplicado &&
         gokuBlack != nullptr &&
         rafagaFinalKamehameha->sceneBoundingRect().intersects(gokuBlack->getSprite()->sceneBoundingRect())) {
-        aplicarDanioBlackNivel2(38.0f);
-        danioKamehamehaAplicado = true;
+        aplicarDañoBlackNivel2(18.0f);
+        dañoKamehamehaAplicado = true;
         actualizarHUD();
         actualizarTextoNivel2();
         limpiarRafagaFinalKamehameha();
 
         if (vidaBlackNivel2 <= 0.0f) {
-            finalizarNivel2("Gogeta derroto a Goku Black. Vuelve a entrar al nivel 2 para jugar otra vez.");
+            finalizarNivel2("Gogeta derrota a Black",
+                            "El Final Kamehameha cerro el combate.\n\nPuedes repetir el duelo o volver al selector del Nivel 2.",
+                            true);
             return;
         }
     }
@@ -2184,7 +2385,7 @@ void MainWindow::limpiarRafagaFinalKamehameha()
     rafagaFinalKamehameha = nullptr;
 }
 
-void MainWindow::finalizarNivel2(const QString &mensaje)
+void MainWindow::finalizarNivel2(const QString &titulo, const QString &mensaje, bool permitirReintento)
 {
     nivel2EnPausa = true;
     nivel2Activo = false;
@@ -2196,15 +2397,40 @@ void MainWindow::finalizarNivel2(const QString &mensaje)
         timerNivel2->stop();
     }
 
-    while (!bolasBlack.isEmpty()) {
-        eliminarBolaBlack(bolasBlack.last());
-    }
+    desactivarBolasBlack();
+    setVisibleHUDVida(false);
+    aroNivel2.setVisible(false);
 
     if (textoEstadoNivel2 != nullptr) {
-        textoEstadoNivel2->setPlainText(mensaje);
+        textoEstadoNivel2->setVisible(false);
     }
 
     actualizarHUD();
+
+    const QString textoBotonReintento = permitirReintento ? QString("Reintentar Nivel 2"): QString();
+
+    mostrarOverlayEstado(titulo,
+                         mensaje,
+                         "Selector Nivel 2",
+                         [this]() {
+                             ocultarOverlayEstado();
+                             mostrarPantallaNivel2();
+                         },
+                         textoBotonReintento,
+                         [this]() {
+                             ocultarOverlayEstado();
+
+                             if (dificultadSeleccionada == Dificil) {
+                                 iniciarNivel2Dificil();
+                             }
+                             else {
+                                 iniciarNivel2Facil();
+                             }
+                         },
+                         "Volver al inicio",
+                         [this]() {
+                             volverAlMenuPrincipal();
+                         });
 }
 
 bool MainWindow::spriteColisionaConProyectil(Sprite *sprite, Proyectil *bola) const
@@ -2261,7 +2487,7 @@ QPointF MainWindow::destinoAleatorioBateo()
     return QPointF(destinoX, destinoY);
 }
 
-void MainWindow::keyPressEvent(QKeyEvent *e)
+void MainWindow::keyPressEvent(QKeyEvent *e) try
 {
     if (nivel2Activo) {
         if (e->isAutoRepeat()) {
@@ -2313,7 +2539,9 @@ void MainWindow::keyPressEvent(QKeyEvent *e)
         for (int i = 0; i < bolasFreezer.size(); i++) {
             Proyectil *bola = bolasFreezer.at(i);
 
-            if (bola->getEstado() == Proyectil::LanzadaPorFreezer &&
+            if (bola != nullptr &&
+                bola->estaActiva() &&
+                bola->getEstado() == Proyectil::LanzadaPorFreezer &&
                 bolaEnZonaBateo(bola)) {
 
                 QPointF destino = destinoAleatorioBateo();
@@ -2322,10 +2550,10 @@ void MainWindow::keyPressEvent(QKeyEvent *e)
                 reproducirAudiosBatazo();
 
                 if (vegito->estaEnEuforia()) {
-                    freezer->recibirDanio(8.0f);
+                    freezer->recibirDaño(8.0f);
                     freezer->reproducirImpacto();
                     mostrarEfectoTajoEspada();
-                    rachaDanio += 8.0f;
+                    rachaDaño += 8.0f;
                     actualizarDificultad();
                     actualizarHUD();
 
@@ -2352,6 +2580,10 @@ void MainWindow::keyPressEvent(QKeyEvent *e)
 
         vegito->controlarProyectil(bolaControlada, e->key());
     }
+}
+catch (const std::exception &error)
+{
+    manejarErrorJuego("Ocurrio un error al procesar la entrada del teclado.", error);
 }
 
 void MainWindow::keyReleaseEvent(QKeyEvent *e)
@@ -2390,7 +2622,7 @@ void MainWindow::moverGogeta(qreal deltaX, const QString &rutaSprite)
         if (rutaSpriteGogetaActual != rutaSprite) {
             rutaSpriteGogetaActual = rutaSprite;
             gogeta->cambiarSprite(rutaSpriteGogetaActual, 3);
-            gogeta->fijarTamanoVisual(anchoVisualGogeta, altoVisualGogeta);
+            gogeta->fijarTamañoVisual(anchoVisualGogeta, altoVisualGogeta);
             gogeta->reiniciarAnimacion();
             if (gogeta->getFrameActual() < gogeta->getTotalFrames() - 1) {
                 gogeta->avanzarFrame();
@@ -2439,7 +2671,7 @@ void MainWindow::saltarGogeta()
     const qreal anchoSaltoGogeta = 72.0;
     const qreal altoSaltoGogeta = 120.0;
     gogeta->cambiarSprite(rutaSpriteGogetaActual, framesSalto);
-    gogeta->fijarTamanoVisual(anchoSaltoGogeta, altoSaltoGogeta);
+    gogeta->fijarTamañoVisual(anchoSaltoGogeta, altoSaltoGogeta);
     gogeta->reiniciarAnimacion();
     gogeta->setPos(posicionGogetaX, posicionActualGogetaY);
 }
@@ -2461,10 +2693,7 @@ void MainWindow::resizeEvent(QResizeEvent *event)
         scene->setSceneRect(0, 0, ui->graphicsView->width(), ui->graphicsView->height());
     }
 
-    ui->gridLayoutWidget->setGeometry(width() / 8,
-                                      height() / 10,
-                                      width() * 3 / 4,
-                                      height() * 2 / 3);
+    ui->gridLayoutWidget->setGeometry(width() / 8,height() / 10,width() * 3 / 4,height() * 2 / 3);
 
     ui->labelTitulo->setMinimumHeight(height() / 6);
     ui->botonInicio->setMinimumSize(width() / 6, height() / 14);
@@ -2494,19 +2723,35 @@ void MainWindow::resizeEvent(QResizeEvent *event)
     }
 
     if (botonNivel1 != nullptr) {
-        botonNivel1->setGeometry(width() / 2 - 250, height() * 3 / 4, 160, 45);
-    }
-
-    if (botonNivel2 != nullptr) {
-        botonNivel2->setGeometry(width() / 2 + 90, height() * 3 / 4, 170, 45);
+        botonNivel1->setGeometry(width() / 2 - 90, height() * 3 / 4 + 62, 180, 45);
     }
 
     if (botonNivel2Facil != nullptr) {
-        botonNivel2Facil->setGeometry(width() / 2 - 90, height() * 3 / 4, 80, 45);
+        botonNivel2Facil->setGeometry(width() / 2 - 110, height() * 3 / 4, 95, 45);
     }
 
     if (botonNivel2Dificil != nullptr) {
-        botonNivel2Dificil->setGeometry(width() / 2 + 20, height() * 3 / 4, 80, 45);
+        botonNivel2Dificil->setGeometry(width() / 2 + 15, height() * 3 / 4, 95, 45);
+    }
+
+    if (labelOverlayTitulo != nullptr) {
+        labelOverlayTitulo->setGeometry(width() / 2 - 260, height() / 7, 520, 60);
+    }
+
+    if (labelOverlayTexto != nullptr) {
+        labelOverlayTexto->setGeometry(width() / 2 - 280, height() / 4, 560, 185);
+    }
+
+    if (botonOverlayPrimario != nullptr) {
+        botonOverlayPrimario->setGeometry(width() / 2 - 235, height() * 3 / 4, 150, 45);
+    }
+
+    if (botonOverlaySecundario != nullptr) {
+        botonOverlaySecundario->setGeometry(width() / 2 - 75, height() * 3 / 4, 150, 45);
+    }
+
+    if (botonOverlayTerciario != nullptr) {
+        botonOverlayTerciario->setGeometry(width() / 2 + 85, height() * 3 / 4, 150, 45);
     }
 
     if (nivel2Activo && gogeta != nullptr) {
@@ -2542,15 +2787,11 @@ void MainWindow::resizeEvent(QResizeEvent *event)
         }
 
         const QRectF rectaNivel2 = scene->sceneRect();
-        const QRectF rectaAro(rectaNivel2.left() + rectaNivel2.width() * 0.455,
-                              rectaNivel2.top() + rectaNivel2.height() * 0.30,
-                              rectaNivel2.width() * 0.048,
-                              rectaNivel2.height() * 0.19);
+        const QRectF rectaAro(rectaNivel2.left() + rectaNivel2.width() * 0.455,rectaNivel2.top() + rectaNivel2.height() * 0.30,rectaNivel2.width() * 0.048,rectaNivel2.height() * 0.19);
         aroNivel2.crearHitboxEliptica(scene, rectaAro);
 
         if (textoEstadoNivel2 != nullptr) {
-            textoEstadoNivel2->setPos(scene->sceneRect().center().x() - 180,
-                                      scene->sceneRect().bottom() - 110);
+            textoEstadoNivel2->setPos(scene->sceneRect().center().x() - 180,scene->sceneRect().bottom() - 110);
         }
 
         actualizarHUD();

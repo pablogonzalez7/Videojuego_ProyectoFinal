@@ -1,6 +1,6 @@
 #include "personaje.h"
 
-Personaje::Personaje(const QString &rutaQuieto,int framesQuieto,const QString &rutaAtaque,int framesAtaque,qreal posX,qreal posY,float vidaMaximaInicial)
+Personaje::Personaje(const QString &rutaQuieto, int framesQuieto, const QString &rutaAtaque, int framesAtaque, qreal posX, qreal posY, float vidaMaximaInicial)
 {
     spriteQuietoNormal = {rutaQuieto, framesQuieto};
     spriteAtaqueNormal = {rutaAtaque, framesAtaque};
@@ -30,7 +30,7 @@ Personaje::~Personaje()
     delete spritePersonaje;
 }
 
-void Personaje::configurarSpritesEuforia(const QString &rutaTransformacion,int framesTransformacion,const QString &rutaAtaqueKaioken,int framesAtaqueKaioken)
+void Personaje::configurarSpritesEuforia(const QString &rutaTransformacion, int framesTransformacion, const QString &rutaAtaqueKaioken, int framesAtaqueKaioken)
 {
     spriteTransformacion = {rutaTransformacion, framesTransformacion};
     spriteAtaqueKaioken = {rutaAtaqueKaioken, framesAtaqueKaioken};
@@ -153,9 +153,9 @@ void Personaje::reiniciarVida()
     mostrarSpriteQuieto();
 }
 
-void Personaje::recibirDanio(float dano)
+void Personaje::recibirDaño(float daño)
 {
-    vidaActual -= dano;
+    vidaActual -= daño;
 
     if (vidaActual < 0.0f) {
         vidaActual = 0.0f;
@@ -165,12 +165,12 @@ void Personaje::recibirDanio(float dano)
 void Personaje::mostrarSpriteQuieto()
 {
     if (euforiaDisponible && tieneSpritesEuforia) {
-        spritePersonaje->cambiarSprite(spriteAtaqueKaioken.ruta,spriteAtaqueKaioken.frames);
+        spritePersonaje->cambiarSprite(spriteAtaqueKaioken.ruta, spriteAtaqueKaioken.frames);
         spritePersonaje->reiniciarAnimacion();
         return;
     }
 
-    spritePersonaje->cambiarSprite(spriteQuietoNormal.ruta,spriteQuietoNormal.frames);
+    spritePersonaje->cambiarSprite(spriteQuietoNormal.ruta, spriteQuietoNormal.frames);
     spritePersonaje->reiniciarAnimacion();
 }
 

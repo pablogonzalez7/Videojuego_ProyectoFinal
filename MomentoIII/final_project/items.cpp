@@ -16,13 +16,7 @@ Items::Items()
     posicionY = 0.0;
 }
 
-void Items::crearBarraVida(QGraphicsScene *scene,
-                           qreal x,
-                           qreal y,
-                           qreal ancho,
-                           qreal alto,
-                           const QString &nuevoTexto,
-                           const QColor &colorRelleno)
+void Items::crearBarraVida(QGraphicsScene *scene, qreal x, qreal y, qreal ancho, qreal alto, const QString &nuevoTexto, const QColor &colorRelleno)
 {
     destruir();
 
@@ -95,13 +89,7 @@ void Items::actualizarBarraVida(float vidaActual, float vidaMaxima)
                               QString::number(vidaMaxima, 'f', 1));
 }
 
-void Items::crearTextoEscena(QGraphicsScene *scene,
-                             qreal x,
-                             qreal y,
-                             const QString &texto,
-                             const QColor &color,
-                             int tamanoFuente,
-                             bool negrita)
+void Items::crearTextoEscena(QGraphicsScene *scene, qreal x, qreal y, const QString &texto, const QColor &color, int tamañoFuente, bool negrita)
 {
     destruir();
 
@@ -112,7 +100,7 @@ void Items::crearTextoEscena(QGraphicsScene *scene,
     textoEscena = scene->addText(texto);
     textoEscena->setDefaultTextColor(color);
     textoEscena->setFont(QFont("Arial",
-                               tamanoFuente,
+                               tamañoFuente,
                                negrita ? QFont::Bold : QFont::Normal));
     textoEscena->setPos(x, y);
     textoEscena->setZValue(24);
@@ -125,11 +113,7 @@ void Items::setTexto(const QString &texto)
     }
 }
 
-void Items::crearHitboxEliptica(QGraphicsScene *scene,
-                                const QRectF &recta,
-                                const QColor &color,
-                                qreal opacidad,
-                                bool visible)
+void Items::crearHitboxEliptica(QGraphicsScene *scene, const QRectF &recta, const QColor &color, qreal opacidad, bool visible)
 {
     destruir();
 
@@ -148,11 +132,7 @@ void Items::crearHitboxEliptica(QGraphicsScene *scene,
     hitboxPath.addEllipse(recta);
 }
 
-void Items::crearHitboxTrayectoria(QGraphicsScene *scene,
-                                   const QPainterPath &trayectoria,
-                                   const QColor &color,
-                                   qreal opacidad,
-                                   bool visible)
+void Items::crearHitboxTrayectoria(QGraphicsScene *scene, const QPainterPath &trayectoria, const QColor &color, qreal opacidad, bool visible)
 {
     destruir();
 
@@ -273,14 +253,7 @@ void Items::destruir()
     hitboxPath = QPainterPath();
 }
 
-void Items::aplicarEstiloPanel(QLabel *label,
-                               const QString &colorFondo,
-                               const QString &colorBorde,
-                               const QString &colorTexto,
-                               int radio,
-                               int padding,
-                               int tamanoFuente,
-                               bool negrita)
+void Items::aplicarEstiloPanel(QLabel *label, const QString &colorFondo, const QString &colorBorde, const QString &colorTexto, int radio, int padding, int tamañoFuente, bool negrita)
 {
     if (label == nullptr) {
         return;
@@ -292,7 +265,7 @@ void Items::aplicarEstiloPanel(QLabel *label,
                            + "border-radius: " + QString::number(radio) + "px;"
                            + "padding: " + QString::number(padding) + "px;"
                            + "color: " + colorTexto + ";"
-                           + "font-size: " + QString::number(tamanoFuente) + "px;"
+                           + "font-size: " + QString::number(tamañoFuente) + "px;"
                            + "font-weight: " + QString(negrita ? "bold" : "normal") + ";"
                            + "}";
     label->setStyleSheet(estilo);

@@ -19,34 +19,14 @@ class Items
 public:
     Items();
 
-    void crearBarraVida(QGraphicsScene *scene,
-                        qreal x,
-                        qreal y,
-                        qreal ancho,
-                        qreal alto,
-                        const QString &etiqueta,
-                        const QColor &colorRelleno);
+    void crearBarraVida(QGraphicsScene *scene, qreal x, qreal y, qreal ancho, qreal alto, const QString &etiqueta, const QColor &colorRelleno);
     void actualizarBarraVida(float vidaActual, float vidaMaxima);
 
-    void crearTextoEscena(QGraphicsScene *scene,
-                          qreal x,
-                          qreal y,
-                          const QString &texto,
-                          const QColor &color = Qt::white,
-                          int tamanoFuente = 12,
-                          bool negrita = true);
+    void crearTextoEscena(QGraphicsScene *scene, qreal x, qreal y, const QString &texto, const QColor &color = Qt::white, int tamañoFuente = 12, bool negrita = true);
     void setTexto(const QString &texto);
 
-    void crearHitboxEliptica(QGraphicsScene *scene,
-                             const QRectF &recta,
-                             const QColor &color = QColor(255, 235, 90),
-                             qreal opacidad = 0.0,
-                             bool visible = false);
-    void crearHitboxTrayectoria(QGraphicsScene *scene,
-                                const QPainterPath &trayectoria,
-                                const QColor &color = QColor(255, 255, 255),
-                                qreal opacidad = 0.0,
-                                bool visible = false);
+    void crearHitboxEliptica(QGraphicsScene *scene, const QRectF &recta, const QColor &color = QColor(255, 235, 90), qreal opacidad = 0.0, bool visible = false);
+    void crearHitboxTrayectoria(QGraphicsScene *scene, const QPainterPath &trayectoria, const QColor &color = QColor(255, 255, 255), qreal opacidad = 0.0, bool visible = false);
 
     bool contienePunto(const QPointF &punto) const;
     bool colisionaCon(QGraphicsItem *item) const;
@@ -54,14 +34,7 @@ public:
     void setVisible(bool visible);
     void destruir();
 
-    static void aplicarEstiloPanel(QLabel *label,
-                                   const QString &colorFondo,
-                                   const QString &colorBorde,
-                                   const QString &colorTexto,
-                                   int radio,
-                                   int padding,
-                                   int tamanoFuente,
-                                   bool negrita);
+    static void aplicarEstiloPanel(QLabel *label, const QString &colorFondo, const QString &colorBorde, const QString &colorTexto, int radio, int padding, int tamañoFuente, bool negrita);
 
 private:
     void destruirItemsGraficos();
@@ -81,4 +54,4 @@ private:
     QString etiqueta;
 };
 
-#endif // ITEMS_H
+#endif

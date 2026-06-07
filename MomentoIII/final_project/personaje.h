@@ -6,14 +6,6 @@
 
 #include "sprite.h"
 
-/*
-    Clase Personaje
-
-    Clase base de cualquier personaje del juego.
-    Conserva exactamente la lógica que ya tenían: sprite, animación,
-    posición, vida y euforia/kaioken. Jugador y Villano heredan de aquí
-    para no cargar toda la lógica en una sola clase.
-*/
 class Personaje
 {
 public:
@@ -29,13 +21,7 @@ public:
         AnimacionImpacto
     };
 
-    Personaje(const QString &rutaQuieto,
-              int framesQuieto,
-              const QString &rutaAtaque,
-              int framesAtaque,
-              qreal posX,
-              qreal posY,
-              float vidaMaxima);
+    Personaje(const QString &rutaQuieto, int framesQuieto, const QString &rutaAtaque, int framesAtaque, qreal posX, qreal posY, float vidaMaxima);
 
     virtual ~Personaje();
 
@@ -59,7 +45,7 @@ public:
     float getVidaActual() const;
     float getVidaMaxima() const;
     void reiniciarVida();
-    void recibirDanio(float dano);
+    void recibirDaño(float daño);
 
 protected:
     void mostrarSpriteQuieto();
@@ -87,4 +73,4 @@ protected:
     float vidaActual;
 };
 
-#endif // PERSONAJE_H
+#endif

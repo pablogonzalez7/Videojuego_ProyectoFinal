@@ -2,8 +2,8 @@
 
 #include <QKeyEvent>
 
-Jugador::Jugador(const QString &rutaQuieto,int framesQuieto,const QString &rutaAtaque,int framesAtaque,qreal posX,qreal posY,float vidaMaxima)
-    : Personaje(rutaQuieto,framesQuieto,rutaAtaque,framesAtaque,posX,posY,vidaMaxima)
+Jugador::Jugador(const QString &rutaQuieto, int framesQuieto, const QString &rutaAtaque, int framesAtaque, qreal posX, qreal posY, float vidaMaxima)
+    : Personaje(rutaQuieto, framesQuieto, rutaAtaque, framesAtaque, posX, posY, vidaMaxima)
 {
     bolaControlada = nullptr;
     puedeBatear = true;
@@ -15,7 +15,7 @@ bool Jugador::bolaEnZonaBateo(Proyectil *bola) const
         return false;
     }
 
-    return spritePersonaje->collidesWithItem(bola->getItem(),Qt::IntersectsItemBoundingRect);
+    return spritePersonaje->collidesWithItem(bola->getItem(), Qt::IntersectsItemBoundingRect);
 }
 
 bool Jugador::batear(Proyectil *bola, const QPointF &destino)

@@ -10,26 +10,19 @@
 #include "personaje.h"
 #include "proyectil.h"
 
-/*
-    Clase Villano
-
-    Hereda de Personaje y contiene la lógica propia del enemigo.
-    Los métodos percibir, razonar, actuar y aprender representan el agente
-    inteligente sencillo pedido en el proyecto, sin crear una clase adicional.
-*/
 class Villano : public Personaje
 {
 public:
     struct Ataque {
         float velocidad;
-        float dano;
+        float daño;
         QString spriteProyectil;
         QString spriteLanzamiento;
         int framesLanzamiento;
         QVector<QRectF> framesRecorteLanzamiento;
     };
 
-    Villano(const QString &rutaQuieto,int framesQuieto,const QString &rutaAtaque,int framesAtaque,qreal posX,qreal posY,float vidaMaxima);
+    Villano(const QString &rutaQuieto, int framesQuieto, const QString &rutaAtaque, int framesAtaque, qreal posX, qreal posY, float vidaMaxima);
 
     void configurarAtaques(const QList<Ataque> &nuevosAtaques);
     Ataque elegirAtaque();
@@ -48,4 +41,4 @@ private:
     short tipoAtaqueActual;
 };
 
-#endif // VILLANO_H
+#endif
